@@ -60,7 +60,7 @@ function wpmatch_free_uninstall() {
 	if ( $remove ) {
 		global $wpdb;
 		$prefix = $wpdb->prefix . 'wpmf_';
-		$tables = array( 'profiles', 'profile_meta', 'photos', 'threads', 'messages', 'likes', 'blocks', 'reports', 'verifications', 'interests', 'interest_map' );
+		$tables = array( 'profiles', 'profile_meta', 'photos', 'threads', 'messages', 'typing_indicators', 'likes', 'blocks', 'reports', 'verifications', 'interests', 'interest_map' );
 		foreach ( $tables as $t ) {
 			$wpdb->query( "DROP TABLE IF EXISTS {$prefix}{$t}" );
 		}
@@ -154,6 +154,17 @@ function wpmatch_free_maybe_install() {
 		"PRIMARY KEY  (id),\n" .
 		"KEY thread_id (thread_id),\n" .
 		"KEY recipient_id (recipient_id)\n" .
+		") {$charset_collate};\n";
+	$sql            .= "CREATE TABLE {$prefix}typing_indicators (\n" .
+		"id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
+		"thread_id BIGINT UNSIGNED NOT NULL,\n" .
+		"user_id BIGINT UNSIGNED NOT NULL,\n" .
+		"is_typing TINYINT(1) NOT NULL DEFAULT 0,\n" .
+		"last_updated DATETIME NOT NULL,\n" .
+		"PRIMARY KEY  (id),\n" .
+		"UNIQUE KEY thread_user (thread_id, user_id),\n" .
+		"KEY user_id (user_id),\n" .
+		"KEY last_updated (last_updated)\n" .
 		") {$charset_collate};\n";
 	$sql            .= "CREATE TABLE {$prefix}likes (\n" .
 		"id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
@@ -650,6 +661,35 @@ add_action(
 				),
 			)
 		);
+
+		// Typing indicators endpoints
+		register_rest_route(
+			$ns,
+			'/conversations/(?P<thread_id>\d+)/typing',
+			array(
+				'methods'             => 'POST',
+				'callback'            => 'wpmf_rest_set_typing_status',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+				'args'                => array(
+					'is_typing' => array(
+						'required' => true,
+						'type'     => 'boolean',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/conversations/(?P<thread_id>\d+)/typing-status',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_get_typing_status',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+			)
+		);
 	}
 );
 
@@ -1018,3 +1058,108 @@ function wpmf_rest_search_messages( WP_REST_Request $req ) {
 
 	return rest_ensure_response( $results );
 }
+
+/**
+ * REST API endpoint for setting typing status.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_set_typing_status( WP_REST_Request $req ) {
+	$user_id   = get_current_user_id();
+	$thread_id = (int) $req['thread_id'];
+	$is_typing = (bool) $req['is_typing'];
+
+	if ( ! $thread_id ) {
+		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
+	}
+
+	// Verify user has access to this thread
+	global $wpdb;
+	$messages_table = $wpdb->prefix . 'wpmf_messages';
+	$access_check   = $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT COUNT(*) FROM {$messages_table} 
+			WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
+			$thread_id,
+			$user_id,
+			$user_id
+		)
+	);
+
+	if ( ! $access_check ) {
+		return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
+	}
+
+	$result = wpmf_typing_status_set( $thread_id, $user_id, $is_typing );
+
+	if ( ! $result ) {
+		return new WP_Error( 'update_failed', __( 'Failed to update typing status.', 'wpmatch-free' ), array( 'status' => 500 ) );
+	}
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'message' => __( 'Typing status updated.', 'wpmatch-free' ),
+		)
+	);
+}
+
+/**
+ * REST API endpoint for getting typing status.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_get_typing_status( WP_REST_Request $req ) {
+	$user_id   = get_current_user_id();
+	$thread_id = (int) $req['thread_id'];
+
+	if ( ! $thread_id ) {
+		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
+	}
+
+	// Verify user has access to this thread
+	global $wpdb;
+	$messages_table = $wpdb->prefix . 'wpmf_messages';
+	$access_check   = $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT COUNT(*) FROM {$messages_table} 
+			WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
+			$thread_id,
+			$user_id,
+			$user_id
+		)
+	);
+
+	if ( ! $access_check ) {
+		return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
+	}
+
+	$typing_users = wpmf_typing_status_get( $thread_id, $user_id );
+
+	return rest_ensure_response(
+		array(
+			'typing_users' => $typing_users,
+		)
+	);
+}
+
+// Schedule typing indicator cleanup
+add_action( 'wp', 'wpmf_schedule_typing_cleanup' );
+
+/**
+ * Schedule typing indicator cleanup cron job.
+ *
+ * @since 0.1.0
+ */
+function wpmf_schedule_typing_cleanup() {
+	if ( ! wp_next_scheduled( 'wpmf_cleanup_typing_indicators' ) ) {
+		wp_schedule_event( time(), 'hourly', 'wpmf_cleanup_typing_indicators' );
+	}
+}
+
+// Hook for typing indicator cleanup
+add_action( 'wpmf_cleanup_typing_indicators', 'wpmf_typing_status_cleanup' );

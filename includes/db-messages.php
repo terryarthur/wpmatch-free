@@ -412,3 +412,129 @@ function wpmf_messages_search( int $user_id, string $query, int $limit = 50 ) {
 
 	return $wpdb->get_results( $sql, ARRAY_A );
 }
+
+/**
+ * Set typing status for a user in a thread.
+ *
+ * @param int  $thread_id Thread ID.
+ * @param int  $user_id   User ID.
+ * @param bool $is_typing Whether user is typing.
+ * @return bool Success status.
+ * @since 0.1.0
+ */
+function wpmf_typing_status_set( int $thread_id, int $user_id, bool $is_typing ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'wpmf_typing_indicators';
+
+	// Clean up old typing indicators (older than 10 seconds)
+	$wpdb->delete(
+		$table,
+		array(
+			'last_updated' => array( '<', gmdate( 'Y-m-d H:i:s', time() - 10 ) ),
+		),
+		array( '%s' )
+	);
+
+	if ( $is_typing ) {
+		// Insert or update typing status
+		$result = $wpdb->replace(
+			$table,
+			array(
+				'thread_id'    => $thread_id,
+				'user_id'      => $user_id,
+				'is_typing'    => 1,
+				'last_updated' => current_time( 'mysql' ),
+			),
+			array( '%d', '%d', '%d', '%s' )
+		);
+	} else {
+		// Remove typing status
+		$result = $wpdb->delete(
+			$table,
+			array(
+				'thread_id' => $thread_id,
+				'user_id'   => $user_id,
+			),
+			array( '%d', '%d' )
+		);
+	}
+
+	if ( $result ) {
+		do_action( 'wpmf_typing_status_changed', $thread_id, $user_id, $is_typing );
+	}
+
+	return (bool) $result;
+}
+
+/**
+ * Get typing status for a thread (excluding current user).
+ *
+ * @param int $thread_id Thread ID.
+ * @param int $current_user_id Current user ID to exclude.
+ * @return array Array of users who are typing.
+ * @since 0.1.0
+ */
+function wpmf_typing_status_get( int $thread_id, int $current_user_id ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'wpmf_typing_indicators';
+
+	// Clean up old typing indicators first
+	$wpdb->delete(
+		$table,
+		array(
+			'last_updated' => array( '<', gmdate( 'Y-m-d H:i:s', time() - 10 ) ),
+		),
+		array( '%s' )
+	);
+
+	// Get current typing users (excluding current user)
+	$typing_users = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT user_id, last_updated FROM {$table} 
+			WHERE thread_id = %d AND user_id != %d AND is_typing = 1
+			ORDER BY last_updated DESC",
+			$thread_id,
+			$current_user_id
+		),
+		ARRAY_A
+	);
+
+	// Add user details
+	foreach ( $typing_users as $key => $typing_user ) {
+		$user = get_user_by( 'id', $typing_user['user_id'] );
+		if ( $user ) {
+			$typing_users[ $key ]['user'] = array(
+				'id'           => $user->ID,
+				'display_name' => $user->display_name,
+				'avatar'       => get_avatar_url( $user->ID, array( 'size' => 24 ) ),
+			);
+		}
+	}
+
+	return $typing_users;
+}
+
+/**
+ * Clean up old typing indicators.
+ * Should be called periodically via cron.
+ *
+ * @param int $max_age Maximum age in seconds (default 10 seconds).
+ * @return int Number of records cleaned up.
+ * @since 0.1.0
+ */
+function wpmf_typing_status_cleanup( int $max_age = 10 ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'wpmf_typing_indicators';
+
+	$cutoff_time = gmdate( 'Y-m-d H:i:s', time() - $max_age );
+
+	$deleted = $wpdb->delete(
+		$table,
+		array(
+			'last_updated' => array( '<', $cutoff_time ),
+		),
+		array( '%s' )
+	);
+
+	return (int) $deleted;
+}

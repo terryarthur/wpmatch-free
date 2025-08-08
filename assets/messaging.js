@@ -17,6 +17,9 @@
         unreadPolling: null,
         isComposing: false,
         lastMessageId: 0,
+        typingTimeout: null,
+        typingPolling: null,
+        isTyping: false,
 
         init: function() {
             this.bindEvents();
@@ -32,6 +35,7 @@
                 this.currentThreadId = conversationContainer.data('thread-id');
                 this.loadMessages(this.currentThreadId);
                 this.startMessagePolling();
+                this.startTypingPolling();
             }
         },
 
@@ -42,10 +46,13 @@
             // Conversation selection
             $(document).on('click', '.wpmf-conversation-item', this.selectConversation.bind(this));
             
-            // Message input auto-resize
+            // Message input auto-resize and typing detection
             $(document).on('input', '#wpmf-message-input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
+                
+                // Handle typing indicator
+                WPMFMessaging.handleTyping();
             });
             
             // Enter key to send (Ctrl+Enter for new line)
@@ -144,6 +151,7 @@
             // Load messages for selected conversation
             this.loadMessages(threadId);
             this.startMessagePolling();
+            this.startTypingPolling();
             
             // Mark as read
             this.markAsRead(threadId);
@@ -265,7 +273,8 @@
                 return;
             }
 
-            // Disable form
+            // Stop typing indicator and disable form
+            this.stopTyping();
             sendButton.prop('disabled', true);
             $('.wpmf-send-text').hide();
             $('.wpmf-send-loading').show();
@@ -442,6 +451,139 @@
             alert('Error: ' + message);
         },
 
+        // Typing indicator methods
+        handleTyping: function() {
+            if (!this.currentThreadId) return;
+            
+            // Clear existing timeout
+            if (this.typingTimeout) {
+                clearTimeout(this.typingTimeout);
+            }
+            
+            // If not already typing, send typing start
+            if (!this.isTyping) {
+                this.setTypingStatus(true);
+                this.isTyping = true;
+            }
+            
+            // Set timeout to stop typing after 3 seconds of no input
+            this.typingTimeout = setTimeout(function() {
+                WPMFMessaging.setTypingStatus(false);
+                WPMFMessaging.isTyping = false;
+            }, 3000);
+        },
+
+        setTypingStatus: function(isTyping) {
+            if (!this.currentThreadId) return;
+            
+            $.ajax({
+                url: wpmf_ajax.rest_url + 'conversations/' + this.currentThreadId + '/typing',
+                method: 'POST',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', wpmf_ajax.nonce);
+                },
+                data: {
+                    is_typing: isTyping
+                }
+                // Silent - no error handling needed for typing indicators
+            });
+        },
+
+        startTypingPolling: function() {
+            if (this.typingPolling) {
+                clearInterval(this.typingPolling);
+            }
+            
+            // Poll for typing indicators every 2 seconds
+            this.typingPolling = setInterval(function() {
+                if (WPMFMessaging.currentThreadId) {
+                    WPMFMessaging.checkTypingStatus();
+                }
+            }, 2000);
+        },
+
+        checkTypingStatus: function() {
+            if (!this.currentThreadId) return;
+            
+            $.ajax({
+                url: wpmf_ajax.rest_url + 'conversations/' + this.currentThreadId + '/typing-status',
+                method: 'GET',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-WP-Nonce', wpmf_ajax.nonce);
+                },
+                success: function(response) {
+                    WPMFMessaging.updateTypingIndicator(response.typing_users);
+                }
+                // Silent - no error handling needed
+            });
+        },
+
+        updateTypingIndicator: function(typingUsers) {
+            const messagesList = $('#wpmf-messages-list');
+            const existingIndicator = messagesList.find('.wpmf-typing-indicator');
+            
+            if (!typingUsers || typingUsers.length === 0) {
+                // Remove typing indicator if no one is typing
+                existingIndicator.remove();
+                return;
+            }
+            
+            // Create typing indicator HTML
+            let html = '<div class="wpmf-typing-indicator">';
+            html += '<div class="wpmf-typing-avatars">';
+            
+            // Show up to 3 avatars
+            typingUsers.slice(0, 3).forEach(function(typingUser) {
+                if (typingUser.user && typingUser.user.avatar) {
+                    html += '<img src="' + typingUser.user.avatar + '" alt="' + 
+                           (typingUser.user.display_name || 'User') + '" class="wpmf-typing-avatar">';
+                }
+            });
+            
+            html += '</div>';
+            html += '<div class="wpmf-typing-text">';
+            
+            if (typingUsers.length === 1) {
+                html += (typingUsers[0].user?.display_name || 'Someone') + ' is typing';
+            } else if (typingUsers.length === 2) {
+                html += (typingUsers[0].user?.display_name || 'Someone') + ' and ' + 
+                       (typingUsers[1].user?.display_name || 'someone else') + ' are typing';
+            } else {
+                html += typingUsers.length + ' people are typing';
+            }
+            
+            html += '<div class="wpmf-typing-dots">';
+            html += '<div class="wpmf-typing-dot"></div>';
+            html += '<div class="wpmf-typing-dot"></div>';
+            html += '<div class="wpmf-typing-dot"></div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            if (existingIndicator.length) {
+                // Update existing indicator
+                existingIndicator.replaceWith(html);
+            } else {
+                // Add new indicator at the end of messages
+                messagesList.append(html);
+            }
+            
+            // Auto-scroll to show typing indicator
+            this.scrollToBottom();
+        },
+
+        stopTyping: function() {
+            if (this.isTyping) {
+                this.setTypingStatus(false);
+                this.isTyping = false;
+            }
+            
+            if (this.typingTimeout) {
+                clearTimeout(this.typingTimeout);
+                this.typingTimeout = null;
+            }
+        },
+
         // Utility functions
         timeAgo: function(dateString) {
             const date = new Date(dateString);
@@ -505,6 +647,11 @@
         if (WPMFMessaging.unreadPolling) {
             clearInterval(WPMFMessaging.unreadPolling);
         }
+        if (WPMFMessaging.typingPolling) {
+            clearInterval(WPMFMessaging.typingPolling);
+        }
+        // Stop typing indicator when leaving
+        WPMFMessaging.stopTyping();
     });
 
 })(jQuery);

@@ -1760,3 +1760,134 @@
     outline: 3px solid #667eea;
     outline-offset: 2px;
 }
+
+/* ==== TYPING INDICATORS ==== */
+.wpmf-typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px;
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #7f8c8d;
+    background: rgba(127, 140, 141, 0.05);
+    border-radius: 15px;
+    animation: wpmf-fadeIn 0.3s ease-in;
+}
+
+.wpmf-typing-indicator.wpmf-hidden {
+    display: none;
+}
+
+.wpmf-typing-avatars {
+    display: flex;
+    margin-right: 8px;
+}
+
+.wpmf-typing-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid white;
+    margin-left: -4px;
+}
+
+.wpmf-typing-avatar:first-child {
+    margin-left: 0;
+}
+
+.wpmf-typing-text {
+    display: flex;
+    align-items: center;
+}
+
+.wpmf-typing-dots {
+    display: inline-flex;
+    margin-left: 6px;
+}
+
+.wpmf-typing-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #7f8c8d;
+    margin: 0 1px;
+    animation: wpmf-typing-bounce 1.4s infinite ease-in-out;
+}
+
+.wpmf-typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.wpmf-typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.wpmf-typing-dot:nth-child(3) {
+    animation-delay: 0s;
+}
+
+@keyframes wpmf-typing-bounce {
+    0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Typing indicator positioning in different contexts */
+.wpmf-messages-list .wpmf-typing-indicator {
+    align-self: flex-start;
+    max-width: 70%;
+    margin-left: 42px; /* Account for avatar space */
+}
+
+.wpmf-conversation-container .wpmf-typing-indicator {
+    margin: 10px 20px 0 20px;
+}
+
+/* Dark mode typing indicators */
+@media (prefers-color-scheme: dark) {
+    .wpmf-typing-indicator {
+        background: rgba(160, 174, 192, 0.1);
+        color: #a0aec0;
+    }
+    
+    .wpmf-typing-dot {
+        background: #a0aec0;
+    }
+    
+    .wpmf-typing-avatar {
+        border-color: #4a5568;
+    }
+}
+
+/* Mobile responsive typing indicators */
+@media (max-width: 768px) {
+    .wpmf-typing-indicator {
+        padding: 6px 15px;
+        margin: 5px 15px 5px 52px;
+        font-size: 12px;
+    }
+    
+    .wpmf-typing-avatar {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+@media (max-width: 480px) {
+    .wpmf-typing-indicator {
+        padding: 5px 12px;
+        margin: 5px 12px 5px 48px;
+        font-size: 11px;
+    }
+    
+    .wpmf-typing-avatar {
+        width: 16px;
+        height: 16px;
+    }
+}
