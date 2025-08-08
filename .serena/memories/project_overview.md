@@ -1,0 +1,1 @@
+WP Match Free: WordPress dating plugin scaffold. PHP 8.1+, WP 6.5+. Provides admin settings page and basic activation/uninstall options. Future features per architecture and api-spec docs. No build step required yet.

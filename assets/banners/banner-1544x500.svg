@@ -1,0 +1,24 @@
+<svg width="1544" height="500" viewBox="0 0 1544 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient background -->
+  <rect width="1544" height="500" fill="url(#paint0_linear)"/>
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="1544" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF6B6B"/>
+      <stop offset="1" stop-color="#667EEA"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Heart shapes pattern -->
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M386 125C386 173.704 418.046 200 450 200C481.954 200 514 173.704 514 125C514 100 485 50 450 50C415 50 386 100 386 125Z" fill="white" fill-opacity="0.1"/>
+  
+  <!-- Plugin title -->
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="96" font-weight="bold" fill="white">WP Match Free</text>
+  
+  <!-- Tagline -->
+  <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" fill="white">Powerful Dating Plugin for WordPress</text>
+  
+  <!-- Heart icon -->
+  <svg x="676" y="60" width="192" height="192" viewBox="0 0 24 24">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="white"/>
+  </svg>
+</svg>

@@ -1,0 +1,1 @@
+When finishing a task: run PHPCS with WPCS, verify plugin activates on WP 6.5+ without warnings, confirm settings page renders, ensure uninstall respects delete-data checkbox, and update version constants if needed.

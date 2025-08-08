@@ -1,0 +1,160 @@
+# Copyright (C) 2025 Terry Arthur
+# This file is distributed under the GPLv3.
+msgid ""
+msgstr ""
+"Project-Id-Version: WP Match Free 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-07 15:43+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Manual\n"
+"X-Domain: wpmatch-free\n"
+
+#: wpmatch-free.php:221
+msgid "WP Match"
+msgstr ""
+
+#: wpmatch-free.php:239
+msgid "Photo Moderation"
+msgstr ""
+
+#: wpmatch-free.php:239
+msgid "Photos"
+msgstr ""
+
+#: wpmatch-free.php:240
+msgid "User Reports"
+msgstr ""
+
+#: wpmatch-free.php:240
+msgid "Reports"
+msgstr ""
+
+#: wpmatch-free.php:241
+msgid "Verifications"
+msgstr ""
+
+#: wpmatch-free.php:248
+msgid "Member"
+msgstr ""
+
+#: wpmatch-free.php:249
+msgid "Moderator"
+msgstr ""
+
+#: wpmatch-free.php:306
+msgid "General"
+msgstr ""
+
+#: wpmatch-free.php:308
+msgid "Moderation & Safety"
+msgstr ""
+
+#: wpmatch-free.php:309
+msgid "Rate Limits"
+msgstr ""
+
+#: wpmatch-free.php:310
+msgid "Verification"
+msgstr ""
+
+#: wpmatch-free.php:314
+msgid "Remove data on uninstall"
+msgstr ""
+
+#: wpmatch-free.php:354
+msgid "Delete all plugin data on uninstall"
+msgstr ""
+
+#: wpmatch-free.php:360
+msgid "Require approval before visible"
+msgstr ""
+
+#: wpmatch-free.php:360
+msgid "Visible immediately, review later"
+msgstr ""
+
+#: wpmatch-free.php:365
+msgid "Photo moderation"
+msgstr ""
+
+#: wpmatch-free.php:366
+msgid "Word blacklist (comma-separated)"
+msgstr ""
+
+#: wpmatch-free.php:367
+msgid "Messages per day"
+msgstr ""
+
+#: wpmatch-free.php:368
+msgid "Likes per day"
+msgstr ""
+
+#: wpmatch-free.php:369
+msgid "Enable verification"
+msgstr ""
+
+#: wpmatch-free.php:384
+msgid "Enable verification workflow"
+msgstr ""
+
+#: wpmatch-free.php:394
+msgid "WP Match Settings"
+msgstr ""
+
+#: includes/shortcodes.php:6
+msgid "Please log in."
+msgstr ""
+
+#: includes/shortcodes.php:12
+msgid "Gender"
+msgstr ""
+
+#: includes/shortcodes.php:13
+msgid "Region"
+msgstr ""
+
+#: includes/shortcodes.php:14
+msgid "Headline"
+msgstr ""
+
+#: includes/shortcodes.php:15
+msgid "Bio"
+msgstr ""
+
+#: includes/shortcodes.php:16
+msgid "Save"
+msgstr ""
+
+#: includes/shortcodes.php:35
+msgid "Age min"
+msgstr ""
+
+#: includes/shortcodes.php:36
+msgid "Age max"
+msgstr ""
+
+#: includes/shortcodes.php:37
+msgid "With photo"
+msgstr ""
+
+#: includes/shortcodes.php:38
+msgid "Search"
+msgstr ""
+
+#: includes/privacy.php:32
+msgid "WP Match Profile Data"
+msgstr ""
+
+#: includes/privacy.php:36
+msgid "WP Match Messages"
+msgstr ""
+
+#: includes/privacy.php:40
+msgid "WP Match Likes"
+msgstr ""

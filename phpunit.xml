@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    backupGlobals="false"
+    colors="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    processIsolation="false"
+    stopOnFailure="false"
+    testsuiteDebugLog="true"
+    verbose="true"
+>
+    <testsuites>
+        <testsuite name="wpmatch-free">
+            <directory prefix="test-" suffix=".php">./tests/</directory>
+            <directory suffix="Test.php">./tests/</directory>
+        </testsuite>
+    </testsuites>
+    
+    <php>
+        <const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="vendor/yoast/phpunit-polyfills" />
+    </php>
+    
+    <coverage>
+        <include>
+            <directory suffix=".php">./</directory>
+        </include>
+        <exclude>
+            <directory>./tests/</directory>
+            <directory>./vendor/</directory>
+            <file>./wpmatch-free.php</file>
+        </exclude>
+        <report>
+            <html outputDirectory="coverage-html"/>
+            <text outputFile="php://stdout"/>
+        </report>
+    </coverage>
+    
+    <logging>
+        <junit outputFile="test-results.xml"/>
+    </logging>
+</phpunit>

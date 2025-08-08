@@ -1,0 +1,614 @@
+/**
+ * WP Match Free - CSS Assets for Blocks and Frontend
+ * Comprehensive styling for all plugin components
+ * 
+ * @package WPMatchFree
+ * @version 0.1.0
+ */
+
+/* ==== GUTENBERG BLOCK EDITOR STYLES ==== */
+.wp-block-wpmatch-free-profile-edit,
+.wp-block-wpmatch-free-search-form,
+.wp-block-wpmatch-free-search-results {
+    background: #f8f9fa;
+    border: 2px dashed #d0d7de;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    color: #656d76;
+    font-size: 14px;
+    margin: 20px 0;
+}
+
+.wp-block-wpmatch-free-profile-edit::before {
+    content: "👤 Profile Edit Form";
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.wp-block-wpmatch-free-search-form::before {
+    content: "🔍 Dating Search Form";
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.wp-block-wpmatch-free-search-results::before {
+    content: "💕 Search Results Grid";
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* ==== PROFILE EDIT FORM ==== */
+.wpmf-profile-edit {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    color: white;
+}
+
+.wpmf-profile-edit label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    font-size: 16px;
+}
+
+.wpmf-profile-edit input,
+.wpmf-profile-edit textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.wpmf-profile-edit input:focus,
+.wpmf-profile-edit textarea:focus {
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.wpmf-profile-edit p {
+    margin-bottom: 20px;
+}
+
+.wpmf-profile-edit button {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+    color: white;
+    padding: 14px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(238, 90, 82, 0.4);
+}
+
+.wpmf-profile-edit button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(238, 90, 82, 0.6);
+}
+
+.wpmf-profile-edit button:active {
+    transform: translateY(0);
+}
+
+/* ==== SEARCH FORM ==== */
+.wpmf-search-form {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.wpmf-search-form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #2c3e50;
+}
+
+.wpmf-search-form input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.wpmf-search-form input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.wpmf-search-form button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-width: 150px;
+}
+
+.wpmf-search-form button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+/* ==== SEARCH RESULTS CONTAINER ==== */
+.wpmf-search-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.wpmf-search-summary {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 18px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* ==== SEARCH RESULTS GRID ==== */
+.wpmf-search-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.wpmf-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.wpmf-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #ff6b6b, #667eea, #764ba2);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.wpmf-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.wpmf-card:hover::before {
+    transform: scaleX(1);
+}
+
+.wpmf-card-headline {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    line-height: 1.3;
+}
+
+.wpmf-card-region {
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.wpmf-card-region::before {
+    content: "📍";
+    margin-right: 6px;
+}
+
+.wpmf-card-age {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.wpmf-card-age::before {
+    content: "🎂";
+    margin-right: 6px;
+}
+
+.wpmf-card-verified {
+    background: linear-gradient(45deg, #00b894, #00cec9);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 12px;
+}
+
+.wpmf-no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: #7f8c8d;
+    font-size: 18px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #d0d7de;
+}
+
+.wpmf-no-results::before {
+    content: "😔";
+    display: block;
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+/* ==== PAGINATION ==== */
+.wpmf-pagination {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.wpmf-pagination-info {
+    margin-bottom: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+.wpmf-pagination-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+}
+
+.wpmf-pagination-links li {
+    margin: 0;
+}
+
+.wpmf-pagination-links a,
+.wpmf-pagination-links button,
+.wpmf-pagination-links span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    color: #4a5568;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    min-width: 44px;
+    cursor: pointer;
+}
+
+.wpmf-pagination-links a:hover,
+.wpmf-pagination-links button:hover {
+    border-color: #667eea;
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.wpmf-pagination-current span {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: #667eea;
+    cursor: default;
+}
+
+.wpmf-pagination-dots span {
+    border: none;
+    background: none;
+    cursor: default;
+    font-weight: 700;
+}
+
+.wpmf-pagination-prev,
+.wpmf-pagination-next {
+    font-weight: 600;
+}
+
+/* ==== LOADING STATES ==== */
+.wpmf-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    color: #666;
+}
+
+.wpmf-loading::before {
+    content: '';
+    width: 32px;
+    height: 32px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: wpmf-spin 1s linear infinite;
+    margin-right: 12px;
+}
+
+@keyframes wpmf-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.wpmf-lazy-loaded {
+    animation: wpmf-fadeIn 0.5s ease-in;
+}
+
+@keyframes wpmf-fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==== RESPONSIVE DESIGN ==== */
+@media (max-width: 768px) {
+    .wpmf-search-form {
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+    
+    .wpmf-search-results {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .wpmf-card {
+        padding: 20px;
+    }
+    
+    .wpmf-profile-edit {
+        margin: 0 16px;
+        padding: 20px;
+    }
+    
+    .wpmf-pagination-links {
+        gap: 4px;
+    }
+    
+    .wpmf-pagination-links a,
+    .wpmf-pagination-links button,
+    .wpmf-pagination-links span {
+        padding: 8px 10px;
+        min-width: 36px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .wpmf-search-form {
+        padding: 16px;
+    }
+    
+    .wpmf-card {
+        padding: 16px;
+    }
+    
+    .wpmf-card-headline {
+        font-size: 18px;
+    }
+    
+    .wpmf-profile-edit {
+        margin: 0 12px;
+        padding: 16px;
+    }
+    
+    .wpmf-profile-edit input,
+    .wpmf-profile-edit textarea {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* ==== DARK MODE SUPPORT ==== */
+@media (prefers-color-scheme: dark) {
+    .wpmf-search-form {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .wpmf-search-form label {
+        color: #e2e8f0;
+    }
+    
+    .wpmf-search-form input {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .wpmf-search-form input:focus {
+        border-color: #667eea;
+    }
+    
+    .wpmf-card {
+        background: #2d3748;
+        color: #e2e8f0;
+    }
+    
+    .wpmf-card-headline {
+        color: #f7fafc;
+    }
+    
+    .wpmf-pagination-links a,
+    .wpmf-pagination-links button,
+    .wpmf-pagination-links span {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .wpmf-no-results {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #a0aec0;
+    }
+    
+    .wpmf-search-summary {
+        color: #a0aec0;
+    }
+}
+
+/* ==== ACCESSIBILITY FEATURES ==== */
+@media (prefers-reduced-motion: reduce) {
+    .wpmf-card,
+    .wpmf-profile-edit button,
+    .wpmf-search-form button,
+    .wpmf-pagination-links a,
+    .wpmf-pagination-links button {
+        transition: none;
+    }
+    
+    .wpmf-card:hover {
+        transform: none;
+    }
+    
+    .wpmf-lazy-loaded {
+        animation: none;
+    }
+    
+    @keyframes wpmf-spin {
+        0%, 100% { transform: rotate(0deg); }
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .wpmf-card {
+        border: 2px solid currentColor;
+    }
+    
+    .wpmf-search-form input,
+    .wpmf-profile-edit input,
+    .wpmf-profile-edit textarea {
+        border-width: 2px;
+        border-color: currentColor;
+    }
+    
+    .wpmf-pagination-links a,
+    .wpmf-pagination-links button,
+    .wpmf-pagination-links span {
+        border-width: 2px;
+    }
+}
+
+/* Focus visible for better keyboard navigation */
+.wpmf-card:focus-visible,
+.wpmf-search-form input:focus-visible,
+.wpmf-search-form button:focus-visible,
+.wpmf-profile-edit input:focus-visible,
+.wpmf-profile-edit textarea:focus-visible,
+.wpmf-profile-edit button:focus-visible,
+.wpmf-pagination-links a:focus-visible,
+.wpmf-pagination-links button:focus-visible {
+    outline: 3px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* ==== PRINT STYLES ==== */
+@media print {
+    .wpmf-search-form,
+    .wpmf-pagination {
+        display: none;
+    }
+    
+    .wpmf-search-results {
+        display: block;
+    }
+    
+    .wpmf-card {
+        break-inside: avoid;
+        margin-bottom: 20px;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .wpmf-card::before {
+        display: none;
+    }
+}
+
+/* ==== UTILITY CLASSES ==== */
+.wpmf-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.wpmf-text-center {
+    text-align: center;
+}
+
+.wpmf-hidden {
+    display: none;
+}
+
+.wpmf-fade-in {
+    animation: wpmf-fadeIn 0.5s ease-in;
+}
+
+.wpmf-pulse {
+    animation: wpmf-pulse 2s infinite;
+}
+
+@keyframes wpmf-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
