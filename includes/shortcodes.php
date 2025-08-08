@@ -232,11 +232,11 @@ function wpmf_sc_search_results() {
 	$out .= '<div class="wpmf-search-results">';
 	foreach ( $pagination_data['results'] as $r ) {
 		$out .= '<div class="wpmf-card" data-user-id="' . esc_attr( $r['user_id'] ) . '">';
-		
+
 		// Add profile photo if available
-		$user_photos = wpmf_photos_list_by_user( (int) $r['user_id'] );
+		$user_photos   = wpmf_photos_list_by_user( (int) $r['user_id'] );
 		$primary_photo = null;
-		
+
 		// Find approved primary photo
 		foreach ( $user_photos as $photo ) {
 			if ( $photo['is_primary'] && 'approved' === $photo['status'] ) {
@@ -244,7 +244,7 @@ function wpmf_sc_search_results() {
 				break;
 			}
 		}
-		
+
 		// If no primary, get first approved photo
 		if ( ! $primary_photo ) {
 			foreach ( $user_photos as $photo ) {
@@ -254,10 +254,10 @@ function wpmf_sc_search_results() {
 				}
 			}
 		}
-		
+
 		if ( $primary_photo ) {
 			$attachment_id = (int) $primary_photo['attachment_id'];
-			$image_data = wp_get_attachment_image_src( $attachment_id, 'medium' );
+			$image_data    = wp_get_attachment_image_src( $attachment_id, 'medium' );
 			if ( $image_data ) {
 				$out .= '<div class="wpmf-card-photo">';
 				$out .= '<img src="' . esc_url( $image_data[0] ) . '" alt="' . esc_attr( $r['headline'] ?? __( 'Profile photo', 'wpmatch-free' ) ) . '" />';
@@ -269,7 +269,7 @@ function wpmf_sc_search_results() {
 			$out .= '<div class="wpmf-photo-placeholder">📷</div>';
 			$out .= '</div>';
 		}
-		
+
 		$out .= '<div class="wpmf-card-content">';
 		$out .= '<div class="wpmf-card-headline">' . esc_html( $r['headline'] ?? '' ) . '</div>';
 		$out .= '<div class="wpmf-card-region">' . esc_html( $r['region'] ?? '' ) . '</div>';
@@ -520,3 +520,146 @@ function wpmf_ajax_delete_photo() {
 	}
 }
 add_action( 'wp_ajax_wpmf_delete_photo', 'wpmf_ajax_delete_photo' );
+
+/**
+ * Messaging inbox shortcode.
+ *
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ * @since 0.1.0
+ */
+function wpmf_sc_messages_inbox( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . __( 'You must be logged in to view messages.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'per_page' => 20,
+		),
+		$atts
+	);
+
+	wp_enqueue_script( 'wpmf-messaging', plugin_dir_url( __DIR__ ) . 'assets/messaging.js', array( 'jquery' ), '0.1.0', true );
+	wp_localize_script(
+		'wpmf-messaging',
+		'wpmf_ajax',
+		array(
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'rest_url' => rest_url( 'wpmatch-free/v1/' ),
+			'nonce'    => wp_create_nonce( 'wp_rest' ),
+			'user_id'  => get_current_user_id(),
+		)
+	);
+
+	ob_start();
+	?>
+	<div id="wpmf-messages-container" class="wpmf-messages-container">
+		<div class="wpmf-messages-header">
+			<h3><?php esc_html_e( 'Messages', 'wpmatch-free' ); ?></h3>
+			<div class="wpmf-unread-count-badge" id="wpmf-unread-count" style="display: none;">
+				<span>0</span>
+			</div>
+		</div>
+		
+		<div class="wpmf-messages-sidebar" id="wpmf-conversations-list">
+			<div class="wpmf-loading"><?php esc_html_e( 'Loading conversations...', 'wpmatch-free' ); ?></div>
+		</div>
+		
+		<div class="wpmf-messages-main" id="wpmf-messages-main">
+			<div class="wpmf-no-conversation">
+				<div class="wpmf-no-conversation-content">
+					<div class="wpmf-icon">💬</div>
+					<h4><?php esc_html_e( 'Select a conversation', 'wpmatch-free' ); ?></h4>
+					<p><?php esc_html_e( 'Choose a conversation from the sidebar to start messaging.', 'wpmatch-free' ); ?></p>
+				</div>
+			</div>
+		</div>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+add_shortcode( 'wpmf_messages_inbox', 'wpmf_sc_messages_inbox' );
+
+/**
+ * Message conversation shortcode.
+ *
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ * @since 0.1.0
+ */
+function wpmf_sc_conversation( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . __( 'You must be logged in to view conversations.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'thread_id'    => 0,
+			'recipient_id' => 0,
+		),
+		$atts
+	);
+
+	$thread_id    = absint( $atts['thread_id'] );
+	$recipient_id = absint( $atts['recipient_id'] );
+
+	// If no thread_id but we have recipient_id, try to find/create thread
+	if ( ! $thread_id && $recipient_id ) {
+		$current_user_id = get_current_user_id();
+		$thread_id       = wpmf_thread_get_or_create( $current_user_id, $recipient_id );
+	}
+
+	if ( ! $thread_id ) {
+		return '<p>' . __( 'Invalid conversation.', 'wpmatch-free' ) . '</p>';
+	}
+
+	wp_enqueue_script( 'wpmf-messaging', plugin_dir_url( __DIR__ ) . 'assets/messaging.js', array( 'jquery' ), '0.1.0', true );
+	wp_localize_script(
+		'wpmf-messaging',
+		'wpmf_ajax',
+		array(
+			'ajax_url'  => admin_url( 'admin-ajax.php' ),
+			'rest_url'  => rest_url( 'wpmatch-free/v1/' ),
+			'nonce'     => wp_create_nonce( 'wp_rest' ),
+			'user_id'   => get_current_user_id(),
+			'thread_id' => $thread_id,
+		)
+	);
+
+	ob_start();
+	?>
+	<div id="wpmf-conversation-container" class="wpmf-conversation-container" data-thread-id="<?php echo esc_attr( $thread_id ); ?>">
+		<div class="wpmf-conversation-header" id="wpmf-conversation-header">
+			<div class="wpmf-loading"><?php esc_html_e( 'Loading conversation...', 'wpmatch-free' ); ?></div>
+		</div>
+		
+		<div class="wpmf-messages-list" id="wpmf-messages-list">
+			<div class="wpmf-loading"><?php esc_html_e( 'Loading messages...', 'wpmatch-free' ); ?></div>
+		</div>
+		
+		<div class="wpmf-message-compose" id="wpmf-message-compose">
+			<form id="wpmf-send-message-form">
+				<div class="wpmf-compose-input">
+					<textarea 
+						id="wpmf-message-input" 
+						name="message" 
+						placeholder="<?php esc_attr_e( 'Type your message...', 'wpmatch-free' ); ?>"
+						rows="2"
+						maxlength="2000"
+						required
+					></textarea>
+				</div>
+				<div class="wpmf-compose-actions">
+					<button type="submit" class="wpmf-send-button">
+						<span class="wpmf-send-text"><?php esc_html_e( 'Send', 'wpmatch-free' ); ?></span>
+						<span class="wpmf-send-loading" style="display: none;"><?php esc_html_e( 'Sending...', 'wpmatch-free' ); ?></span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+	<?php
+	return ob_get_clean();
+}
+add_shortcode( 'wpmf_conversation', 'wpmf_sc_conversation' );

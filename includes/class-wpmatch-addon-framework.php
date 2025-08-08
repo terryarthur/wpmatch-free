@@ -52,7 +52,7 @@ class WPMatch_Addon_Framework {
 	 */
 	public static function register_addon( $addon_data ) {
 		$required_fields = array( 'id', 'name', 'version', 'file' );
-		
+
 		foreach ( $required_fields as $field ) {
 			if ( empty( $addon_data[ $field ] ) ) {
 				return false;
@@ -99,7 +99,7 @@ class WPMatch_Addon_Framework {
 		}
 
 		$addon = self::$addons[ $addon_id ];
-		
+
 		// Check if license is required and valid.
 		if ( $addon['license_required'] ) {
 			$license_key = get_option( "wpmatch_license_{$addon_id}" );
@@ -116,13 +116,13 @@ class WPMatch_Addon_Framework {
 	 */
 	public function load_addons() {
 		$addon_dir = WPMATCH_PATH . 'addons/';
-		
+
 		if ( ! is_dir( $addon_dir ) ) {
 			return;
 		}
 
 		$addons = glob( $addon_dir . '*/*.php' );
-		
+
 		foreach ( $addons as $addon_file ) {
 			if ( is_readable( $addon_file ) ) {
 				include_once $addon_file;
@@ -156,7 +156,7 @@ class WPMatch_Addon_Framework {
 	 */
 	public function filter_demo_user_limit( $limit ) {
 		$max_addon_limit = 0;
-		
+
 		foreach ( self::$addons as $addon_id => $addon_data ) {
 			if ( self::is_addon_active( $addon_id ) && $addon_data['demo_users_limit'] > $max_addon_limit ) {
 				$max_addon_limit = $addon_data['demo_users_limit'];
@@ -181,7 +181,7 @@ class WPMatch_Addon_Framework {
 	public function get_available_demo_packs( $packs = array() ) {
 		// Define available premium demo packs.
 		$premium_packs = array(
-			'extended' => array(
+			'extended'     => array(
 				'id'          => 'extended',
 				'name'        => __( 'Extended Demo Pack', 'wpmatch-free' ),
 				'description' => __( '100 additional diverse demo users with enhanced profiles and photos', 'wpmatch-free' ),
@@ -210,7 +210,7 @@ class WPMatch_Addon_Framework {
 				),
 				'available'   => false,
 			),
-			'enterprise' => array(
+			'enterprise'   => array(
 				'id'          => 'enterprise',
 				'name'        => __( 'Enterprise Demo Pack', 'wpmatch-free' ),
 				'description' => __( 'Unlimited demo users with custom profile generation', 'wpmatch-free' ),
@@ -256,7 +256,7 @@ class WPMatch_Addon_Framework {
 			return array();
 		}
 
-		$license_key = get_option( "wpmatch_license_{$addon_id}" );
+		$license_key    = get_option( "wpmatch_license_{$addon_id}" );
 		$license_status = $this->validate_license( $addon_id, $license_key );
 
 		return array(
@@ -278,7 +278,7 @@ class WPMatch_Addon_Framework {
 	public function activate_license( $addon_id, $license_key ) {
 		// This would typically connect to a licensing server.
 		// For demonstration purposes, we'll simulate the response.
-		
+
 		if ( empty( $license_key ) ) {
 			return array(
 				'success' => false,
@@ -296,4 +296,9 @@ class WPMatch_Addon_Framework {
 }
 
 // Initialize addon framework.
-add_action('plugins_loaded', function() { new WPMatch_Addon_Framework(); });
+add_action(
+	'plugins_loaded',
+	function () {
+		new WPMatch_Addon_Framework();
+	}
+);

@@ -212,7 +212,7 @@ function wpmatch_free_maybe_install() {
 		"KEY interest_id (interest_id)\n" .
 		") {$charset_collate};\n";
 
-	// Profile fields tables for custom field system  
+	// Profile fields tables for custom field system
 	$sql .= "CREATE TABLE {$wpdb->prefix}wpmatch_profile_fields (\n" .
 		"field_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
 		"field_key VARCHAR(64) NOT NULL,\n" .
@@ -534,6 +534,122 @@ add_action(
 					return is_user_logged_in(); },
 			)
 		);
+
+		// Messaging API endpoints
+		register_rest_route(
+			$ns,
+			'/conversations',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_conversations',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+				'args'                => array(
+					'page'     => array(
+						'type'    => 'integer',
+						'default' => 1,
+					),
+					'per_page' => array(
+						'type'    => 'integer',
+						'default' => 20,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/conversations/(?P<thread_id>\d+)/messages',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_thread_messages',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+				'args'                => array(
+					'page'     => array(
+						'type'    => 'integer',
+						'default' => 1,
+					),
+					'per_page' => array(
+						'type'    => 'integer',
+						'default' => 50,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/messages',
+			array(
+				'methods'             => 'POST',
+				'callback'            => 'wpmf_rest_send_message',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in() && current_user_can( 'dating_message' ); },
+				'args'                => array(
+					'recipient_id' => array(
+						'required'          => true,
+						'type'              => 'integer',
+						'validate_callback' => function ( $param, $request, $key ) {
+							return is_numeric( $param ) && $param > 0;
+						},
+					),
+					'message'      => array(
+						'required'          => true,
+						'type'              => 'string',
+						'validate_callback' => function ( $param, $request, $key ) {
+							return ! empty( trim( $param ) ) && strlen( trim( $param ) ) <= 2000;
+						},
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/conversations/(?P<thread_id>\d+)/read',
+			array(
+				'methods'             => 'POST',
+				'callback'            => 'wpmf_rest_mark_read',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/messages/unread-count',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_unread_count',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+			)
+		);
+
+		register_rest_route(
+			$ns,
+			'/messages/search',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_search_messages',
+				'permission_callback' => function ( $request ) {
+					return is_user_logged_in(); },
+				'args'                => array(
+					'query' => array(
+						'required'          => true,
+						'type'              => 'string',
+						'validate_callback' => function ( $param, $request, $key ) {
+							return ! empty( trim( $param ) ) && strlen( trim( $param ) ) >= 2;
+						},
+					),
+					'limit' => array(
+						'type'    => 'integer',
+						'default' => 50,
+					),
+				),
+			)
+		);
 	}
 );
 
@@ -680,4 +796,225 @@ function wpmf_rest_likes_me( WP_REST_Request $req ) {
 	$sql  = $wpdb->prepare( "SELECT actor_id, created_at FROM {$t} WHERE target_user_id=%d ORDER BY id DESC LIMIT 50", $user_id );
 	$list = $wpdb->get_results( $sql, ARRAY_A );
 	return rest_ensure_response( $list );
+}
+
+/**
+ * REST API endpoint for user conversations list.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_conversations( WP_REST_Request $req ) {
+	$user_id  = get_current_user_id();
+	$page     = max( 1, (int) $req['page'] );
+	$per_page = min( 50, max( 1, (int) $req['per_page'] ) );
+	$offset   = ( $page - 1 ) * $per_page;
+
+	$conversations = wpmf_user_conversations( $user_id, $per_page, $offset );
+
+	// Add user details for each conversation
+	foreach ( $conversations as $key => $conversation ) {
+		$other_user = get_user_by( 'id', $conversation['other_user_id'] );
+		if ( $other_user ) {
+			$conversations[ $key ]['other_user'] = array(
+				'id'           => $other_user->ID,
+				'display_name' => $other_user->display_name,
+				'avatar'       => get_avatar_url( $other_user->ID, array( 'size' => 64 ) ),
+			);
+		}
+	}
+
+	return rest_ensure_response( $conversations );
+}
+
+/**
+ * REST API endpoint for thread messages.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_thread_messages( WP_REST_Request $req ) {
+	$user_id   = get_current_user_id();
+	$thread_id = (int) $req['thread_id'];
+	$page      = max( 1, (int) $req['page'] );
+	$per_page  = min( 100, max( 1, (int) $req['per_page'] ) );
+	$offset    = ( $page - 1 ) * $per_page;
+
+	if ( ! $thread_id ) {
+		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
+	}
+
+	$messages = wpmf_thread_messages( $thread_id, $user_id, $per_page, $offset );
+
+	if ( empty( $messages ) ) {
+		// Check if user has access to this thread
+		global $wpdb;
+		$messages_table = $wpdb->prefix . 'wpmf_messages';
+		$access_check   = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$messages_table} 
+				WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
+				$thread_id,
+				$user_id,
+				$user_id
+			)
+		);
+
+		if ( ! $access_check ) {
+			return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
+		}
+	}
+
+	// Add user details to messages
+	foreach ( $messages as $key => $message ) {
+		$sender = get_user_by( 'id', $message['sender_id'] );
+		if ( $sender ) {
+			$messages[ $key ]['sender'] = array(
+				'id'           => $sender->ID,
+				'display_name' => $sender->display_name,
+				'avatar'       => get_avatar_url( $sender->ID, array( 'size' => 32 ) ),
+			);
+		}
+	}
+
+	return rest_ensure_response( $messages );
+}
+
+/**
+ * REST API endpoint for sending messages.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_send_message( WP_REST_Request $req ) {
+	$sender_id    = get_current_user_id();
+	$recipient_id = (int) $req['recipient_id'];
+	$message      = sanitize_textarea_field( $req['message'] );
+
+	// Validate recipient exists and is not the sender
+	if ( $recipient_id === $sender_id ) {
+		return new WP_Error( 'invalid_recipient', __( 'You cannot send messages to yourself.', 'wpmatch-free' ), array( 'status' => 400 ) );
+	}
+
+	$recipient = get_user_by( 'id', $recipient_id );
+	if ( ! $recipient ) {
+		return new WP_Error( 'user_not_found', __( 'Recipient not found.', 'wpmatch-free' ), array( 'status' => 404 ) );
+	}
+
+	// Get or create thread
+	$thread_id = wpmf_thread_get_or_create( $sender_id, $recipient_id );
+	if ( ! $thread_id ) {
+		return new WP_Error( 'thread_error', __( 'Unable to create conversation thread.', 'wpmatch-free' ), array( 'status' => 500 ) );
+	}
+
+	// Send message
+	$result = wpmf_message_send( $thread_id, $sender_id, $recipient_id, $message );
+
+	if ( ! $result['success'] ) {
+		return new WP_Error( 'send_failed', $result['message'], array( 'status' => 400 ) );
+	}
+
+	// Return the sent message with user details
+	global $wpdb;
+	$messages_table = $wpdb->prefix . 'wpmf_messages';
+	$sent_message   = $wpdb->get_row(
+		$wpdb->prepare( "SELECT * FROM {$messages_table} WHERE id = %d", $result['message_id'] ),
+		ARRAY_A
+	);
+
+	if ( $sent_message ) {
+		$sender                 = get_user_by( 'id', $sender_id );
+		$sent_message['sender'] = array(
+			'id'           => $sender->ID,
+			'display_name' => $sender->display_name,
+			'avatar'       => get_avatar_url( $sender->ID, array( 'size' => 32 ) ),
+		);
+	}
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'message' => $result['message'],
+			'data'    => $sent_message,
+		)
+	);
+}
+
+/**
+ * REST API endpoint for marking messages as read.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_mark_read( WP_REST_Request $req ) {
+	$user_id   = get_current_user_id();
+	$thread_id = (int) $req['thread_id'];
+
+	if ( ! $thread_id ) {
+		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
+	}
+
+	$result = wpmf_messages_mark_read( $thread_id, $user_id );
+
+	if ( ! $result ) {
+		return new WP_Error( 'mark_read_failed', __( 'Unable to mark messages as read.', 'wpmatch-free' ), array( 'status' => 500 ) );
+	}
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'message' => __( 'Messages marked as read.', 'wpmatch-free' ),
+		)
+	);
+}
+
+/**
+ * REST API endpoint for unread message count.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_unread_count( WP_REST_Request $req ) {
+	$user_id = get_current_user_id();
+	$count   = wpmf_user_unread_count( $user_id );
+
+	return rest_ensure_response(
+		array(
+			'count' => $count,
+		)
+	);
+}
+
+/**
+ * REST API endpoint for searching messages.
+ *
+ * @param WP_REST_Request $req Request object.
+ * @return WP_REST_Response Response object.
+ * @since 0.1.0
+ */
+function wpmf_rest_search_messages( WP_REST_Request $req ) {
+	$user_id = get_current_user_id();
+	$query   = sanitize_text_field( $req['query'] );
+	$limit   = min( 100, max( 1, (int) $req['limit'] ) );
+
+	$results = wpmf_messages_search( $user_id, $query, $limit );
+
+	// Add user details to results
+	foreach ( $results as $key => $message ) {
+		$other_user = get_user_by( 'id', $message['other_user_id'] );
+		if ( $other_user ) {
+			$results[ $key ]['other_user'] = array(
+				'id'           => $other_user->ID,
+				'display_name' => $other_user->display_name,
+				'avatar'       => get_avatar_url( $other_user->ID, array( 'size' => 32 ) ),
+			);
+		}
+	}
+
+	return rest_ensure_response( $results );
 }

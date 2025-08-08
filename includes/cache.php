@@ -78,14 +78,14 @@ class WPMF_Cache {
 	 */
 	public static function get_or_set( $key, $callback, $group = 'default', $expiration = self::DEFAULT_EXPIRATION ) {
 		$data = wp_cache_get( $key, $group );
-		
+
 		if ( false === $data ) {
 			$data = call_user_func( $callback );
 			if ( null !== $data ) {
 				wp_cache_set( $key, $data, $group, $expiration );
 			}
 		}
-		
+
 		return $data;
 	}
 
@@ -99,7 +99,7 @@ class WPMF_Cache {
 	public static function set_profile( $user_id, $profile ) {
 		$key = 'profile_' . $user_id;
 		wp_cache_set( $key, $profile, self::PROFILE_GROUP, self::DEFAULT_EXPIRATION );
-		
+
 		// Also cache by profile ID if available
 		if ( isset( $profile['id'] ) ) {
 			wp_cache_set( 'profile_id_' . $profile['id'], $profile, self::PROFILE_GROUP, self::DEFAULT_EXPIRATION );
@@ -127,7 +127,7 @@ class WPMF_Cache {
 	public static function delete_profile( $user_id ) {
 		$key = 'profile_' . $user_id;
 		wp_cache_delete( $key, self::PROFILE_GROUP );
-		
+
 		// Also try to delete by profile ID
 		$profile = wpmf_profile_get_by_user_id( $user_id );
 		if ( $profile && isset( $profile['id'] ) ) {
@@ -146,13 +146,13 @@ class WPMF_Cache {
 	public static function generate_search_key( $filters, $user_id = 0 ) {
 		// Sort filters for consistent key generation
 		ksort( $filters );
-		
+
 		$key_parts = array(
 			'search',
 			md5( serialize( $filters ) ),
 			$user_id,
 		);
-		
+
 		return implode( '_', $key_parts );
 	}
 
@@ -196,7 +196,7 @@ class WPMF_Cache {
 		if ( false === $version ) {
 			$version = 1;
 		} else {
-			$version++;
+			++$version;
 		}
 		wp_cache_set( 'search_version', $version, self::SEARCH_GROUP, self::LONG_EXPIRATION );
 	}
@@ -215,7 +215,7 @@ class WPMF_Cache {
 			$version = 1;
 			wp_cache_set( 'search_version', $version, self::SEARCH_GROUP, self::LONG_EXPIRATION );
 		}
-		
+
 		$base_key = self::generate_search_key( $filters, $user_id );
 		return $base_key . '_v' . $version;
 	}
@@ -288,23 +288,36 @@ class WPMF_Cache {
 	 */
 	public static function warm_cache() {
 		// Cache popular statistics
-		self::get_or_set( 'total_profiles', function() {
-			global $wpdb;
-			$table = $wpdb->prefix . 'wpmf_profiles';
-			return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", 'active' ) );
-		}, self::STATS_GROUP, self::LONG_EXPIRATION );
+		self::get_or_set(
+			'total_profiles',
+			function () {
+				global $wpdb;
+				$table = $wpdb->prefix . 'wpmf_profiles';
+				return $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE status = %s", 'active' ) );
+			},
+			self::STATS_GROUP,
+			self::LONG_EXPIRATION
+		);
 
 		// Cache recent active users
-		self::get_or_set( 'recent_active', function() {
-			global $wpdb;
-			$table = $wpdb->prefix . 'wpmf_profiles';
-			$cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-7 days' ) );
-			return $wpdb->get_results( $wpdb->prepare( 
-				"SELECT user_id FROM {$table} WHERE status = %s AND last_active >= %s ORDER BY last_active DESC LIMIT 20",
-				'active', 
-				$cutoff 
-			), ARRAY_A );
-		}, self::STATS_GROUP, self::DEFAULT_EXPIRATION );
+		self::get_or_set(
+			'recent_active',
+			function () {
+				global $wpdb;
+				$table  = $wpdb->prefix . 'wpmf_profiles';
+				$cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-7 days' ) );
+				return $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT user_id FROM {$table} WHERE status = %s AND last_active >= %s ORDER BY last_active DESC LIMIT 20",
+						'active',
+						$cutoff
+					),
+					ARRAY_A
+				);
+			},
+			self::STATS_GROUP,
+			self::DEFAULT_EXPIRATION
+		);
 	}
 
 	/**
@@ -315,13 +328,13 @@ class WPMF_Cache {
 	public static function flush_all() {
 		// WordPress doesn't support group flushing, so we increment versions
 		$groups = array( self::PROFILE_GROUP, self::SEARCH_GROUP, self::INTERACTION_GROUP, self::STATS_GROUP );
-		
+
 		foreach ( $groups as $group ) {
 			$version = wp_cache_get( 'version', $group );
 			if ( false === $version ) {
 				$version = 1;
 			} else {
-				$version++;
+				++$version;
 			}
 			wp_cache_set( 'version', $version, $group, self::LONG_EXPIRATION );
 		}
@@ -336,23 +349,23 @@ class WPMF_Cache {
 	public static function get_stats_debug() {
 		$stats = array(
 			'cache_enabled' => wp_using_ext_object_cache(),
-			'cache_type' => wp_using_ext_object_cache() ? 'external' : 'internal',
-			'groups' => array(
-				self::PROFILE_GROUP => array(
+			'cache_type'    => wp_using_ext_object_cache() ? 'external' : 'internal',
+			'groups'        => array(
+				self::PROFILE_GROUP     => array(
 					'version' => wp_cache_get( 'version', self::PROFILE_GROUP ),
 				),
-				self::SEARCH_GROUP => array(
+				self::SEARCH_GROUP      => array(
 					'version' => wp_cache_get( 'search_version', self::SEARCH_GROUP ),
 				),
 				self::INTERACTION_GROUP => array(
 					'version' => wp_cache_get( 'version', self::INTERACTION_GROUP ),
 				),
-				self::STATS_GROUP => array(
+				self::STATS_GROUP       => array(
 					'version' => wp_cache_get( 'version', self::STATS_GROUP ),
 				),
 			),
 		);
-		
+
 		return $stats;
 	}
 }
@@ -365,14 +378,16 @@ class WPMF_Cache {
 function wpmf_cache_init() {
 	// Add cache groups to global cache groups for multisite
 	if ( function_exists( 'wp_cache_add_global_groups' ) ) {
-		wp_cache_add_global_groups( array(
-			WPMF_Cache::PROFILE_GROUP,
-			WPMF_Cache::SEARCH_GROUP,
-			WPMF_Cache::INTERACTION_GROUP,
-			WPMF_Cache::STATS_GROUP,
-		) );
+		wp_cache_add_global_groups(
+			array(
+				WPMF_Cache::PROFILE_GROUP,
+				WPMF_Cache::SEARCH_GROUP,
+				WPMF_Cache::INTERACTION_GROUP,
+				WPMF_Cache::STATS_GROUP,
+			)
+		);
 	}
-	
+
 	// Warm cache on low-traffic requests
 	if ( is_admin() && current_user_can( 'manage_options' ) ) {
 		add_action( 'admin_init', array( 'WPMF_Cache', 'warm_cache' ), 20 );
@@ -431,7 +446,7 @@ function wpmf_cache_debug_info() {
 	if ( ! current_user_can( 'manage_options' ) || ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
 		return;
 	}
-	
+
 	$stats = WPMF_Cache::get_stats_debug();
 	echo '<!-- WP Match Cache Debug: ' . wp_json_encode( $stats ) . ' -->';
 }

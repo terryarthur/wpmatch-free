@@ -46,50 +46,68 @@ class WPMF_Pagination {
 		$current_page = max( 1, absint( $current_page ) );
 		$per_page     = min( self::MAX_PER_PAGE, max( 1, absint( $per_page ) ) );
 		$offset       = ( $current_page - 1 ) * $per_page;
-		
+
 		// Generate cache keys for both results and count
-		$cache_key_results = WPMF_Cache::generate_search_key( 
-			array_merge( $filters, array( 'page' => $current_page, 'per_page' => $per_page ) ), 
-			$user_id 
+		$cache_key_results = WPMF_Cache::generate_search_key(
+			array_merge(
+				$filters,
+				array(
+					'page'     => $current_page,
+					'per_page' => $per_page,
+				)
+			),
+			$user_id
 		);
-		$cache_key_count = WPMF_Cache::generate_search_key( 
-			array_merge( $filters, array( 'count_only' => true ) ), 
-			$user_id 
+		$cache_key_count   = WPMF_Cache::generate_search_key(
+			array_merge( $filters, array( 'count_only' => true ) ),
+			$user_id
 		);
-		
+
 		// Try to get cached results
-		$cached_data = WPMF_Cache::get_search_results( 
-			array_merge( $filters, array( 'page' => $current_page, 'per_page' => $per_page ) ), 
-			$user_id 
+		$cached_data  = WPMF_Cache::get_search_results(
+			array_merge(
+				$filters,
+				array(
+					'page'     => $current_page,
+					'per_page' => $per_page,
+				)
+			),
+			$user_id
 		);
-		$cached_count = WPMF_Cache::get_search_results( 
-			array_merge( $filters, array( 'count_only' => true ) ), 
-			$user_id 
+		$cached_count = WPMF_Cache::get_search_results(
+			array_merge( $filters, array( 'count_only' => true ) ),
+			$user_id
 		);
-		
+
 		if ( false !== $cached_data && false !== $cached_count ) {
 			$results     = $cached_data;
 			$total_items = $cached_count;
 		} else {
 			// Cache miss - fetch from database
-			$results = WPMF_DB_Optimization::optimized_search( $filters, $user_id, $per_page, $offset );
+			$results     = WPMF_DB_Optimization::optimized_search( $filters, $user_id, $per_page, $offset );
 			$total_items = WPMF_DB_Optimization::get_search_count( $filters, $user_id );
-			
+
 			// Cache both results and count
-			WPMF_Cache::set_search_results( 
-				array_merge( $filters, array( 'page' => $current_page, 'per_page' => $per_page ) ), 
-				$results, 
-				$user_id 
+			WPMF_Cache::set_search_results(
+				array_merge(
+					$filters,
+					array(
+						'page'     => $current_page,
+						'per_page' => $per_page,
+					)
+				),
+				$results,
+				$user_id
 			);
-			WPMF_Cache::set_search_results( 
-				array_merge( $filters, array( 'count_only' => true ) ), 
-				$total_items, 
-				$user_id 
+			WPMF_Cache::set_search_results(
+				array_merge( $filters, array( 'count_only' => true ) ),
+				$total_items,
+				$user_id
 			);
 		}
-		
+
 		$total_pages = ceil( $total_items / $per_page );
-		
+
 		return array(
 			'results'      => $results,
 			'total_items'  => $total_items,
@@ -117,15 +135,15 @@ class WPMF_Pagination {
 		if ( $pagination_data['total_pages'] <= 1 ) {
 			return '';
 		}
-		
+
 		$current_page = $pagination_data['current_page'];
 		$total_pages  = $pagination_data['total_pages'];
-		
+
 		if ( empty( $base_url ) ) {
 			$base_url = remove_query_arg( 'paged' );
 		}
-		
-		$output = '<nav class="wpmf-pagination" aria-label="' . esc_attr__( 'Search results pagination', 'wpmatch-free' ) . '">';
+
+		$output  = '<nav class="wpmf-pagination" aria-label="' . esc_attr__( 'Search results pagination', 'wpmatch-free' ) . '">';
 		$output .= '<div class="wpmf-pagination-info">';
 		$output .= sprintf(
 			/* translators: 1: current page, 2: total pages, 3: total items */
@@ -135,77 +153,77 @@ class WPMF_Pagination {
 			$pagination_data['total_items']
 		);
 		$output .= '</div>';
-		
+
 		$output .= '<ul class="wpmf-pagination-links">';
-		
+
 		// Previous page link
 		if ( $pagination_data['has_prev'] ) {
-			$prev_url = add_query_arg( 
-				array_merge( $url_args, array( 'paged' => $pagination_data['prev_page'] ) ), 
-				$base_url 
+			$prev_url = add_query_arg(
+				array_merge( $url_args, array( 'paged' => $pagination_data['prev_page'] ) ),
+				$base_url
 			);
-			$output .= '<li class="wpmf-pagination-prev">';
-			$output .= '<a href="' . esc_url( $prev_url ) . '" rel="prev">' . esc_html__( '« Previous', 'wpmatch-free' ) . '</a>';
-			$output .= '</li>';
+			$output  .= '<li class="wpmf-pagination-prev">';
+			$output  .= '<a href="' . esc_url( $prev_url ) . '" rel="prev">' . esc_html__( '« Previous', 'wpmatch-free' ) . '</a>';
+			$output  .= '</li>';
 		}
-		
+
 		// Page number links
 		$start_page = max( 1, $current_page - 2 );
 		$end_page   = min( $total_pages, $current_page + 2 );
-		
+
 		// First page link
 		if ( $start_page > 1 ) {
-			$first_url = add_query_arg( 
-				array_merge( $url_args, array( 'paged' => 1 ) ), 
-				$base_url 
+			$first_url = add_query_arg(
+				array_merge( $url_args, array( 'paged' => 1 ) ),
+				$base_url
 			);
-			$output .= '<li><a href="' . esc_url( $first_url ) . '">1</a></li>';
-			
+			$output   .= '<li><a href="' . esc_url( $first_url ) . '">1</a></li>';
+
 			if ( $start_page > 2 ) {
 				$output .= '<li class="wpmf-pagination-dots"><span>…</span></li>';
 			}
 		}
-		
+
 		// Middle page links
 		for ( $i = $start_page; $i <= $end_page; $i++ ) {
 			if ( $i === $current_page ) {
 				$output .= '<li class="wpmf-pagination-current"><span aria-current="page">' . $i . '</span></li>';
 			} else {
-				$page_url = add_query_arg( 
-					array_merge( $url_args, array( 'paged' => $i ) ), 
-					$base_url 
+				$page_url = add_query_arg(
+					array_merge( $url_args, array( 'paged' => $i ) ),
+					$base_url
 				);
-				$output .= '<li><a href="' . esc_url( $page_url ) . '">' . $i . '</a></li>';
+				$output  .= '<li><a href="' . esc_url( $page_url ) . '">' . $i . '</a></li>';
 			}
 		}
-		
+
 		// Last page link
 		if ( $end_page < $total_pages ) {
 			if ( $end_page < $total_pages - 1 ) {
 				$output .= '<li class="wpmf-pagination-dots"><span>…</span></li>';
 			}
-			
-			$last_url = add_query_arg( 
-				array_merge( $url_args, array( 'paged' => $total_pages ) ), 
-				$base_url 
+
+			$last_url = add_query_arg(
+				array_merge( $url_args, array( 'paged' => $total_pages ) ),
+				$base_url
 			);
-			$output .= '<li><a href="' . esc_url( $last_url ) . '">' . $total_pages . '</a></li>';
+			$output  .= '<li><a href="' . esc_url( $last_url ) . '">' . $total_pages . '</a></li>';
 		}
-		
+
 		// Next page link
 		if ( $pagination_data['has_next'] ) {
-			$next_url = add_query_arg( 
-				array_merge( $url_args, array( 'paged' => $pagination_data['next_page'] ) ), 
-				$base_url 
+			$next_url = add_query_arg(
+				array_merge( $url_args, array( 'paged' => $pagination_data['next_page'] ) ),
+				$base_url
 			);
-			$output .= '<li class="wpmf-pagination-next">';
-			$output .= '<a href="' . esc_url( $next_url ) . '" rel="next">' . esc_html__( 'Next »', 'wpmatch-free' ) . '</a>';
-			$output .= '</li>';
+			$output  .= '<li class="wpmf-pagination-next">';
+			$output  .= '<a href="' . esc_url( $next_url ) . '" rel="next">' . esc_html__( 'Next »', 'wpmatch-free' ) . '</a>';
+			$output  .= '</li>';
 		}
-		
+
 		$output .= '</ul>';
 		$output .= '</nav>';
-		
+
 		return $output;
 	}
 
@@ -222,14 +240,14 @@ class WPMF_Pagination {
 	 */
 	public static function get_admin_pagination( $table_name, $where_conditions = array(), $current_page = 1, $per_page = 20, $order_by = 'id DESC' ) {
 		global $wpdb;
-		
-		$table = $wpdb->prefix . 'wpmf_' . $table_name;
+
+		$table        = $wpdb->prefix . 'wpmf_' . $table_name;
 		$current_page = max( 1, absint( $current_page ) );
-		$per_page = max( 1, absint( $per_page ) );
-		$offset = ( $current_page - 1 ) * $per_page;
-		
+		$per_page     = max( 1, absint( $per_page ) );
+		$offset       = ( $current_page - 1 ) * $per_page;
+
 		// Build WHERE clause
-		$where_sql = '';
+		$where_sql    = '';
 		$where_params = array();
 		if ( ! empty( $where_conditions ) ) {
 			$where_parts = array();
@@ -245,21 +263,21 @@ class WPMF_Pagination {
 				$where_sql = ' WHERE ' . implode( ' AND ', $where_parts );
 			}
 		}
-		
+
 		// Get total count
-		$count_sql = "SELECT COUNT(*) FROM {$table}{$where_sql}";
+		$count_sql   = "SELECT COUNT(*) FROM {$table}{$where_sql}";
 		$total_items = (int) $wpdb->get_var( $count_sql );
-		
+
 		// Get results
 		$results_sql = $wpdb->prepare(
 			"SELECT * FROM {$table}{$where_sql} ORDER BY {$order_by} LIMIT %d OFFSET %d",
 			$per_page,
 			$offset
 		);
-		$results = $wpdb->get_results( $results_sql, ARRAY_A );
-		
+		$results     = $wpdb->get_results( $results_sql, ARRAY_A );
+
 		$total_pages = ceil( $total_items / $per_page );
-		
+
 		return array(
 			'results'      => $results,
 			'total_items'  => $total_items,
@@ -281,13 +299,13 @@ class WPMF_Pagination {
 	 */
 	public static function get_current_page( $param_name = 'paged' ) {
 		$page = 1;
-		
+
 		if ( isset( $_GET[ $param_name ] ) ) {
 			$page = absint( $_GET[ $param_name ] );
 		} elseif ( isset( $_POST[ $param_name ] ) ) {
 			$page = absint( $_POST[ $param_name ] );
 		}
-		
+
 		return max( 1, $page );
 	}
 
@@ -301,7 +319,7 @@ class WPMF_Pagination {
 	 */
 	public static function get_per_page( $default = self::DEFAULT_PER_PAGE, $meta_key = 'wpmf_search_per_page' ) {
 		$per_page = $default;
-		
+
 		// Check URL parameter
 		if ( isset( $_GET['per_page'] ) ) {
 			$per_page = absint( $_GET['per_page'] );
@@ -313,7 +331,7 @@ class WPMF_Pagination {
 				$per_page = absint( $user_preference );
 			}
 		}
-		
+
 		// Validate and constrain
 		return min( self::MAX_PER_PAGE, max( 1, $per_page ) );
 	}
@@ -329,7 +347,7 @@ class WPMF_Pagination {
 		if ( ! is_user_logged_in() ) {
 			return;
 		}
-		
+
 		$per_page = min( self::MAX_PER_PAGE, max( 1, absint( $per_page ) ) );
 		update_user_meta( get_current_user_id(), $meta_key, $per_page );
 	}
@@ -346,11 +364,11 @@ class WPMF_Pagination {
 		if ( $pagination_data['total_pages'] <= 1 ) {
 			return '';
 		}
-		
+
 		$current_page = $pagination_data['current_page'];
 		$total_pages  = $pagination_data['total_pages'];
-		
-		$output = '<nav class="wpmf-pagination wpmf-ajax-pagination" data-ajax-args="' . esc_attr( wp_json_encode( $ajax_args ) ) . '">';
+
+		$output  = '<nav class="wpmf-pagination wpmf-ajax-pagination" data-ajax-args="' . esc_attr( wp_json_encode( $ajax_args ) ) . '">';
 		$output .= '<div class="wpmf-pagination-info">';
 		$output .= sprintf(
 			/* translators: 1: current page, 2: total pages, 3: total items */
@@ -360,9 +378,9 @@ class WPMF_Pagination {
 			$pagination_data['total_items']
 		);
 		$output .= '</div>';
-		
+
 		$output .= '<ul class="wpmf-pagination-links">';
-		
+
 		// Previous page
 		if ( $pagination_data['has_prev'] ) {
 			$output .= '<li class="wpmf-pagination-prev">';
@@ -370,11 +388,11 @@ class WPMF_Pagination {
 			$output .= esc_html__( '« Previous', 'wpmatch-free' );
 			$output .= '</button></li>';
 		}
-		
+
 		// Page numbers (simplified for AJAX)
 		$start_page = max( 1, $current_page - 2 );
 		$end_page   = min( $total_pages, $current_page + 2 );
-		
+
 		for ( $i = $start_page; $i <= $end_page; $i++ ) {
 			if ( $i === $current_page ) {
 				$output .= '<li class="wpmf-pagination-current"><span>' . $i . '</span></li>';
@@ -382,7 +400,7 @@ class WPMF_Pagination {
 				$output .= '<li><button type="button" data-page="' . $i . '">' . $i . '</button></li>';
 			}
 		}
-		
+
 		// Next page
 		if ( $pagination_data['has_next'] ) {
 			$output .= '<li class="wpmf-pagination-next">';
@@ -390,10 +408,10 @@ class WPMF_Pagination {
 			$output .= esc_html__( 'Next »', 'wpmatch-free' );
 			$output .= '</button></li>';
 		}
-		
+
 		$output .= '</ul>';
 		$output .= '</nav>';
-		
+
 		return $output;
 	}
 
@@ -407,11 +425,11 @@ class WPMF_Pagination {
 		if ( ! wp_verify_nonce( $_POST['nonce'], 'wpmf_ajax_pagination' ) ) {
 			wp_die( 'Security check failed' );
 		}
-		
+
 		$page     = absint( $_POST['page'] ?? 1 );
 		$per_page = absint( $_POST['per_page'] ?? self::DEFAULT_PER_PAGE );
 		$filters  = array();
-		
+
 		// Extract filters from request
 		$allowed_filters = array( 'region', 'age_min', 'age_max', 'verified', 'has_photo' );
 		foreach ( $allowed_filters as $filter ) {
@@ -419,14 +437,14 @@ class WPMF_Pagination {
 				$filters[ $filter ] = sanitize_text_field( $_POST[ $filter ] );
 			}
 		}
-		
-		$user_id = get_current_user_id();
+
+		$user_id         = get_current_user_id();
 		$pagination_data = self::get_paginated_search( $filters, $page, $per_page, $user_id );
-		
+
 		$response = array(
 			'success' => true,
-			'data' => array(
-				'results_html' => self::render_search_results_html( $pagination_data['results'] ),
+			'data'    => array(
+				'results_html'    => self::render_search_results_html( $pagination_data['results'] ),
 				'pagination_html' => self::render_ajax_pagination( $pagination_data, $_POST ),
 				'pagination_info' => array(
 					'current_page' => $pagination_data['current_page'],
@@ -435,7 +453,7 @@ class WPMF_Pagination {
 				),
 			),
 		);
-		
+
 		wp_send_json( $response );
 	}
 
@@ -448,7 +466,7 @@ class WPMF_Pagination {
 	 */
 	private static function render_search_results_html( $results ) {
 		$output = '<div class="wpmf-search-results">';
-		
+
 		foreach ( $results as $profile ) {
 			$output .= '<div class="wpmf-card" data-user-id="' . esc_attr( $profile['user_id'] ) . '">';
 			$output .= '<div class="wpmf-card-headline">' . esc_html( $profile['headline'] ?? '' ) . '</div>';
@@ -458,13 +476,13 @@ class WPMF_Pagination {
 			}
 			$output .= '</div>';
 		}
-		
+
 		if ( empty( $results ) ) {
 			$output .= '<div class="wpmf-no-results">' . esc_html__( 'No profiles found matching your criteria.', 'wpmatch-free' ) . '</div>';
 		}
-		
+
 		$output .= '</div>';
-		
+
 		return $output;
 	}
 }

@@ -865,4 +865,9 @@ class WPMatch_Frontend {
 }
 
 // Initialize frontend
-add_action('plugins_loaded', function() { new WPMatch_Frontend(); });
+add_action(
+	'plugins_loaded',
+	function () {
+		new WPMatch_Frontend();
+	}
+);

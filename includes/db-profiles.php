@@ -22,12 +22,12 @@ function wpmf_profile_get_by_user_id( int $user_id, bool $force_refresh = false 
 	$t      = $wpdb->prefix . 'wpmf_profiles';
 	$sql    = $wpdb->prepare( "SELECT * FROM {$t} WHERE user_id=%d", $user_id );
 	$result = $wpdb->get_row( $sql, ARRAY_A );
-	
+
 	// Cache the result (even if null/empty)
 	if ( $result ) {
 		WPMF_Cache::set_profile( $user_id, $result );
 	}
-	
+
 	return $result;
 }
 
@@ -59,16 +59,16 @@ function wpmf_profile_create( array $data ) {
 	);
 	$f   = array( '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' );
 	$ok  = $wpdb->insert( $t, $ins, $f );
-	
+
 	if ( $ok ) {
 		$profile_id = (int) $wpdb->insert_id;
-		
+
 		// Trigger action hook for cache invalidation
 		do_action( 'wpmf_profile_created', $profile_id, (int) $data['user_id'] );
-		
+
 		return $profile_id;
 	}
-	
+
 	return 0;
 }
 
@@ -104,17 +104,17 @@ function wpmf_profile_update_by_user_id( int $user_id, array $data ) {
 	$upd['updated_at'] = current_time( 'mysql' );
 	$fmt[]             = '%s';
 	$where             = array( 'user_id' => $user_id );
-	
+
 	// Get old data for hook
 	$old_data = wpmf_profile_get_by_user_id( $user_id, true );
-	
+
 	$result = $wpdb->update( $t, $upd, $where, $fmt, array( '%d' ) );
-	
+
 	if ( $result && $old_data ) {
 		// Trigger action hook for cache invalidation
 		do_action( 'wpmf_profile_updated', $old_data['id'], $user_id, $old_data, $upd );
 	}
-	
+
 	return $result;
 }
 
