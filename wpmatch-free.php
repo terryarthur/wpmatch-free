@@ -477,6 +477,15 @@ require_once __DIR__ . '/includes/class-wpmatch-addon-framework.php';
 add_action(
 	'wp_enqueue_scripts',
 	function () {
+		// Enqueue Tailwind CSS CDN
+		wp_enqueue_style( 
+			'wpmf-tailwind', 
+			'https://cdn.tailwindcss.com', 
+			array(), 
+			'3.4.0'
+		);
+		
+		// Enqueue our custom styles after Tailwind
 		wp_enqueue_style( 'wpmf-blocks' );
 	}
 );
