@@ -60,9 +60,9 @@ function wpmatch_free_uninstall() {
 	if ( $remove ) {
 		global $wpdb;
 		$prefix = $wpdb->prefix . 'wpmf_';
-		$tables = array( 'profiles', 'profile_meta', 'photos', 'threads', 'messages', 'typing_indicators', 'likes', 'blocks', 'reports', 'verifications', 'interests', 'interest_map' );
+		$tables = array( 'profiles', 'profile_meta', 'photos', 'threads', 'messages', 'typing_indicators', 'likes', 'blocks', 'reports', 'verifications', 'interests', 'interest_map', 'interactions', 'profile_views', 'calls', 'statuses' );
 		foreach ( $tables as $t ) {
-			$wpdb->query( "DROP TABLE IF EXISTS {$prefix}{$t}" );
+			$wpdb->query( "DROP TABLE IF EXISTS {$prefix}{$t}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		}
 		delete_option( 'wpmatch_free_db_version' );
 		delete_option( 'wpmatch_free_version' );
@@ -88,7 +88,7 @@ add_action( 'init', 'wpmatch_free_load_textdomain' );
 function wpmatch_free_maybe_install() {
 	global $wpdb;
 	$installed_ver = get_option( 'wpmatch_free_db_version' );
-	$target_ver    = '1';
+	$target_ver    = '2'; // Bump when schema changes.
 	if ( $installed_ver === $target_ver ) {
 		return;
 	}
@@ -252,6 +252,107 @@ function wpmatch_free_maybe_install() {
 		"KEY user_id (user_id),\n" .
 		"KEY field_id (field_id)\n" .
 		") {$charset_collate};\n";
+
+	// Interactions table for winks, gifts, and enhanced likes
+	$sql .= "CREATE TABLE {$prefix}interactions (\n" .
+		"id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
+		"sender_id BIGINT UNSIGNED NOT NULL,\n" .
+		"recipient_id BIGINT UNSIGNED NOT NULL,\n" .
+		"interaction_type VARCHAR(20) NOT NULL DEFAULT 'like',\n" .
+		"metadata LONGTEXT NULL,\n" .
+		"status VARCHAR(20) NOT NULL DEFAULT 'sent',\n" .
+		"created_at DATETIME NOT NULL,\n" .
+		"seen_at DATETIME NULL,\n" .
+		"PRIMARY KEY (id),\n" .
+		"KEY sender_id (sender_id),\n" .
+		"KEY recipient_id (recipient_id),\n" .
+		"KEY interaction_type (interaction_type),\n" .
+		"KEY status (status),\n" .
+		"KEY created_at (created_at),\n" .
+		"UNIQUE KEY unique_daily_interaction (sender_id, recipient_id, interaction_type, DATE(created_at))\n" .
+		") {$charset_collate};\n";
+
+	// Profile views table for tracking who viewed profiles
+	$sql .= "CREATE TABLE {$prefix}profile_views (\n" .
+		"id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
+		"viewer_id BIGINT UNSIGNED NOT NULL,\n" .
+		"viewed_user_id BIGINT UNSIGNED NOT NULL,\n" .
+		"view_date DATE NOT NULL,\n" .
+		"view_count TINYINT UNSIGNED NOT NULL DEFAULT 1,\n" .
+		"last_viewed_at DATETIME NOT NULL,\n" .
+		"first_viewed_at DATETIME NOT NULL,\n" .
+		"source VARCHAR(50) NULL DEFAULT 'profile',\n" .
+		"PRIMARY KEY (id),\n" .
+		"KEY viewer_id (viewer_id),\n" .
+		"KEY viewed_user_id (viewed_user_id),\n" .
+		"KEY view_date (view_date),\n" .
+		"KEY last_viewed_at (last_viewed_at),\n" .
+		"UNIQUE KEY unique_daily_view (viewer_id, viewed_user_id, view_date)\n" .
+		") {$charset_collate};\n";
+
+	// WebRTC calls table for call management and history
+	$sql .= "CREATE TABLE {$prefix}calls (
+" .
+		'id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+' .
+		'call_id VARCHAR(36) NOT NULL,
+' .
+		'caller_id BIGINT UNSIGNED NOT NULL,
+' .
+		'recipient_id BIGINT UNSIGNED NOT NULL,
+' .
+		"call_type VARCHAR(10) NOT NULL DEFAULT 'video',
+" .
+		"status VARCHAR(20) NOT NULL DEFAULT 'pending',
+" .
+		'started_at DATETIME NULL,
+' .
+		'ended_at DATETIME NULL,
+' .
+		'duration_seconds INT UNSIGNED NULL,
+' .
+		'end_reason VARCHAR(50) NULL,
+' .
+		'signaling_data LONGTEXT NULL,
+' .
+		'created_at DATETIME NOT NULL,
+' .
+		'updated_at DATETIME NOT NULL,
+' .
+		'PRIMARY KEY (id),
+' .
+		'UNIQUE KEY call_id (call_id),
+' .
+		'KEY caller_id (caller_id),
+' .
+		'KEY recipient_id (recipient_id),
+' .
+		'KEY status (status),
+' .
+		'KEY created_at (created_at)
+' .
+		") {$charset_collate};
+";
+
+	// NEW: Status updates table (since DB version 2).
+	$sql .= "CREATE TABLE {$prefix}statuses (\n" .
+		"id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" .
+		"user_id BIGINT UNSIGNED NOT NULL,\n" .
+		"content TEXT NOT NULL,\n" .
+		"mood VARCHAR(32) NULL,\n" .
+		"visibility VARCHAR(16) NOT NULL DEFAULT 'public',\n" .
+		"status VARCHAR(16) NOT NULL DEFAULT 'active',\n" .
+		"flags_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,\n" .
+		"expires_at DATETIME NULL,\n" .
+		"created_at DATETIME NOT NULL,\n" .
+		"updated_at DATETIME NOT NULL,\n" .
+		"PRIMARY KEY  (id),\n" .
+		"KEY user_created (user_id, created_at),\n" .
+		"KEY visibility_created (visibility, created_at),\n" .
+		"KEY status (status),\n" .
+		"KEY expires_at (expires_at)\n" .
+		") {$charset_collate};\n";
+
 	dbDelta( $sql );
 	update_option( 'wpmatch_free_db_version', $target_ver );
 }
@@ -464,6 +565,10 @@ require_once __DIR__ . '/includes/db-profiles.php';
 require_once __DIR__ . '/includes/db-photos.php';
 require_once __DIR__ . '/includes/db-messages.php';
 require_once __DIR__ . '/includes/db-likes.php';
+require_once __DIR__ . '/includes/db-interactions.php';
+require_once __DIR__ . '/includes/db-profile-views.php';
+require_once __DIR__ . '/includes/db-statuses.php';
+require_once __DIR__ . '/includes/db-calls.php';
 require_once __DIR__ . '/includes/shortcodes.php';
 require_once __DIR__ . '/includes/blocks.php';
 require_once __DIR__ . '/includes/privacy.php';
@@ -478,13 +583,13 @@ add_action(
 	'wp_enqueue_scripts',
 	function () {
 		// Enqueue Tailwind CSS CDN
-		wp_enqueue_style( 
-			'wpmf-tailwind', 
-			'https://cdn.tailwindcss.com', 
-			array(), 
+		wp_enqueue_style(
+			'wpmf-tailwind',
+			'https://cdn.tailwindcss.com',
+			array(),
 			'3.4.0'
 		);
-		
+
 		// Enqueue our custom styles after Tailwind
 		wp_enqueue_style( 'wpmf-blocks' );
 	}
@@ -501,68 +606,37 @@ add_action(
 	'rest_api_init',
 	function () {
 		$ns = 'wpmatch-free/v1';
+
+		// Statuses: list global
 		register_rest_route(
 			$ns,
-			'/profiles',
+			'/statuses',
 			array(
 				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_profiles',
+				'callback'            => 'wpmf_rest_statuses_list',
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'page'      => array(
+					'page'     => array(
 						'type'    => 'integer',
 						'default' => 1,
 					),
-					'per_page'  => array(
+					'per_page' => array(
 						'type'    => 'integer',
-						'default' => 20,
+						'default' => 10,
 					),
-					'age_min'   => array( 'type' => 'integer' ),
-					'age_max'   => array( 'type' => 'integer' ),
-					'region'    => array( 'type' => 'string' ),
-					'verified'  => array( 'type' => 'boolean' ),
-					'has_photo' => array( 'type' => 'boolean' ),
+					'user_id'  => array( 'type' => 'integer' ), // optional filter by user.
 				),
 			)
 		);
-		register_rest_route(
-			$ns,
-			'/profiles/(?P<user_id>\d+)',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_profile_detail',
-				'permission_callback' => '__return_true',
-			)
-		);
-		register_rest_route(
-			$ns,
-			'/matches/me',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_matches_me',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
-			)
-		);
-		register_rest_route(
-			$ns,
-			'/likes/me',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_likes_me',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
-			)
-		);
 
-		// Messaging API endpoints
+		// Statuses: current user's (shortcut)
 		register_rest_route(
 			$ns,
-			'/conversations',
+			'/statuses/mine',
 			array(
 				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_conversations',
-				'permission_callback' => function ( $request ) {
+				'callback'            => 'wpmf_rest_statuses_mine',
+				'permission_callback' => function () {
 					return is_user_logged_in(); },
 				'args'                => array(
 					'page'     => array(
@@ -571,604 +645,664 @@ add_action(
 					),
 					'per_page' => array(
 						'type'    => 'integer',
-						'default' => 20,
+						'default' => 10,
 					),
 				),
 			)
 		);
 
+		// Status detail
 		register_rest_route(
 			$ns,
-			'/conversations/(?P<thread_id>\d+)/messages',
+			'/statuses/(?P<id>\d+)',
 			array(
 				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_thread_messages',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
-				'args'                => array(
-					'page'     => array(
-						'type'    => 'integer',
-						'default' => 1,
-					),
-					'per_page' => array(
-						'type'    => 'integer',
-						'default' => 50,
-					),
-				),
+				'callback'            => 'wpmf_rest_status_detail',
+				'permission_callback' => '__return_true',
 			)
 		);
 
+		// Create status
 		register_rest_route(
 			$ns,
-			'/messages',
+			'/statuses',
 			array(
 				'methods'             => 'POST',
-				'callback'            => 'wpmf_rest_send_message',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in() && current_user_can( 'dating_message' ); },
+				'callback'            => 'wpmf_rest_status_create',
+				'permission_callback' => function () {
+					return is_user_logged_in(); },
 				'args'                => array(
-					'recipient_id' => array(
-						'required'          => true,
-						'type'              => 'integer',
-						'validate_callback' => function ( $param, $request, $key ) {
-							return is_numeric( $param ) && $param > 0;
-						},
-					),
-					'message'      => array(
+					'content'    => array(
 						'required'          => true,
 						'type'              => 'string',
-						'validate_callback' => function ( $param, $request, $key ) {
-							return ! empty( trim( $param ) ) && strlen( trim( $param ) ) <= 2000;
+						'validate_callback' => function ( $param ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+							return is_string( $param ) && strlen( trim( wp_strip_all_tags( $param ) ) ) >= (int) apply_filters( 'wpmf_status_min_length', 2 );
 						},
 					),
+					'visibility' => array( 'type' => 'string' ),
+					'mood'       => array( 'type' => 'string' ),
+					'expires_at' => array( 'type' => 'string' ),
 				),
 			)
 		);
 
+		// Delete status
 		register_rest_route(
 			$ns,
-			'/conversations/(?P<thread_id>\d+)/read',
+			'/statuses/(?P<id>\d+)',
+			array(
+				'methods'             => 'DELETE',
+				'callback'            => 'wpmf_rest_status_delete',
+				'permission_callback' => function () {
+					return is_user_logged_in(); },
+			)
+		);
+
+		// Flag status
+		register_rest_route(
+			$ns,
+			'/statuses/(?P<id>\d+)/flag',
 			array(
 				'methods'             => 'POST',
-				'callback'            => 'wpmf_rest_mark_read',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
-			)
-		);
-
-		register_rest_route(
-			$ns,
-			'/messages/unread-count',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_unread_count',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
-			)
-		);
-
-		register_rest_route(
-			$ns,
-			'/messages/search',
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_search_messages',
-				'permission_callback' => function ( $request ) {
+				'callback'            => 'wpmf_rest_status_flag',
+				'permission_callback' => function () {
 					return is_user_logged_in(); },
 				'args'                => array(
-					'query' => array(
-						'required'          => true,
-						'type'              => 'string',
-						'validate_callback' => function ( $param, $request, $key ) {
-							return ! empty( trim( $param ) ) && strlen( trim( $param ) ) >= 2;
-						},
-					),
-					'limit' => array(
-						'type'    => 'integer',
-						'default' => 50,
-					),
+					'reason' => array( 'type' => 'string' ),
 				),
 			)
 		);
 
-		// Typing indicators endpoints
+		// WebRTC Calls: Create call
 		register_rest_route(
 			$ns,
-			'/conversations/(?P<thread_id>\d+)/typing',
+			'/calls',
 			array(
 				'methods'             => 'POST',
-				'callback'            => 'wpmf_rest_set_typing_status',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
+				'callback'            => 'wpmf_rest_call_create',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
 				'args'                => array(
-					'is_typing' => array(
-						'required' => true,
-						'type'     => 'boolean',
+					'recipient_id' => array( 
+						'type' => 'integer',
+						'required' => true 
+					),
+					'call_type'    => array( 
+						'type' => 'string',
+						'default' => 'video' 
 					),
 				),
 			)
 		);
 
+		// WebRTC Calls: Update call status
 		register_rest_route(
 			$ns,
-			'/conversations/(?P<thread_id>\d+)/typing-status',
+			'/calls/(?P<call_id>[a-f0-9-]+)/status',
+			array(
+				'methods'             => 'PUT',
+				'callback'            => 'wpmf_rest_call_update_status',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+				'args'                => array(
+					'status'     => array( 
+						'type' => 'string',
+						'required' => true 
+					),
+					'end_reason' => array( 
+						'type' => 'string' 
+					),
+				),
+			)
+		);
+
+		// WebRTC Calls: Update signaling data
+		register_rest_route(
+			$ns,
+			'/calls/(?P<call_id>[a-f0-9-]+)/signaling',
+			array(
+				'methods'             => 'PUT',
+				'callback'            => 'wpmf_rest_call_update_signaling',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+				'args'                => array(
+					'signaling_data' => array( 
+						'type' => 'object',
+						'required' => true 
+					),
+				),
+			)
+		);
+
+		// WebRTC Calls: Get call details
+		register_rest_route(
+			$ns,
+			'/calls/(?P<call_id>[a-f0-9-]+)',
 			array(
 				'methods'             => 'GET',
-				'callback'            => 'wpmf_rest_get_typing_status',
-				'permission_callback' => function ( $request ) {
-					return is_user_logged_in(); },
+				'callback'            => 'wpmf_rest_call_get',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+			)
+		);
+
+		// WebRTC Calls: Get user's active calls
+		register_rest_route(
+			$ns,
+			'/calls/active',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_calls_active',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+			)
+		);
+
+		// WebRTC Calls: Get user's call history
+		register_rest_route(
+			$ns,
+			'/calls/history',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_calls_history',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+				'args'                => array(
+					'limit'  => array( 
+						'type' => 'integer',
+						'default' => 20 
+					),
+					'offset' => array( 
+						'type' => 'integer',
+						'default' => 0 
+					),
+					'type'   => array( 
+						'type' => 'string',
+						'default' => 'all' 
+					),
+				),
+			)
+		);
+
+		// WebRTC Calls: Get pending calls for current user
+		register_rest_route(
+			$ns,
+			'/calls/pending',
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'wpmf_rest_calls_pending',
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
 			)
 		);
 	}
 );
 
 /**
- * REST API endpoint for profiles list.
+ * Prepare a status row for REST response.
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param array $row DB row.
+ * @param int   $viewer_id Viewer ID.
+ * @return array
  */
-function wpmf_rest_profiles( WP_REST_Request $req ) {
-	global $wpdb;
-	$t     = $wpdb->prefix . 'wpmf_profiles';
-	$page  = max( 1, (int) $req['page'] );
-	$per   = min( 50, max( 1, (int) $req['per_page'] ) );
-	$where = array( "status='active'" );
-	$vars  = array();
-	if ( isset( $req['age_min'] ) ) {
-		$where[] = 'age >= %d';
-		$vars[]  = (int) $req['age_min']; }
-	if ( isset( $req['age_max'] ) ) {
-		$where[] = 'age <= %d';
-		$vars[]  = (int) $req['age_max']; }
-	if ( ! empty( $req['region'] ) ) {
-		$where[] = 'region = %s';
-		$vars[]  = sanitize_text_field( $req['region'] ); }
-	if ( isset( $req['verified'] ) ) {
-		$where[] = 'verified = %d';
-		$vars[]  = $req['verified'] ? 1 : 0; }
-	$has_photo = $req['has_photo'] ?? null;
-	$offset    = ( $page - 1 ) * $per;
-	$sql       = "SELECT * FROM {$t} WHERE " . implode( ' AND ', $where ) . $wpdb->prepare( ' ORDER BY last_active DESC LIMIT %d OFFSET %d', $per, $offset );
-	if ( $vars ) {
-		$sql = $wpdb->prepare( "SELECT * FROM {$t} WHERE " . implode( ' AND ', $where ) . ' ORDER BY last_active DESC LIMIT %d OFFSET %d', array( ...$vars, $per, $offset ) ); }
-	$list = $wpdb->get_results( $sql, ARRAY_A );
-	if ( $has_photo !== null ) {
-		$uids = array_map( fn( $r )=> (int) $r['user_id'], $list );
-		if ( $uids ) {
-			$pt   = $wpdb->prefix . 'wpmf_photos';
-			$in   = implode( ',', array_fill( 0, count( $uids ), '%d' ) );
-			$q    = $wpdb->prepare( "SELECT DISTINCT user_id FROM {$pt} WHERE is_primary=1 AND status='approved' AND user_id IN ($in)", $uids );
-			$have = $wpdb->get_col( $q );
-			$list = array_values( array_filter( $list, fn( $r )=> in_array( (string) $r['user_id'], $have, true ) ) );
-		}
+function wpmf_status_prepare_for_response( $row, $viewer_id ) {
+	if ( empty( $row ) ) {
+		return array();
 	}
-	$current = get_current_user_id();
-	if ( $current ) {
-		$bt   = $wpdb->prefix . 'wpmf_blocks';
-		$uids = array_map( fn( $r )=> (int) $r['user_id'], $list );
-		if ( $uids ) {
-			$in            = implode( ',', array_fill( 0, count( $uids ), '%d' ) );
-			$q             = $wpdb->prepare( "SELECT DISTINCT target_user_id FROM {$bt} WHERE actor_id=%d AND target_user_id IN ($in)", array_merge( array( $current ), $uids ) );
-			$blocked_by_me = $wpdb->get_col( $q );
-			$q2            = $wpdb->prepare( "SELECT DISTINCT actor_id FROM {$bt} WHERE target_user_id=%d AND actor_id IN ($in)", array_merge( array( $current ), $uids ) );
-			$blocked_me    = $wpdb->get_col( $q2 );
-			$list          = array_values(
-				array_filter(
-					$list,
-					function ( $r ) use ( $blocked_by_me, $blocked_me ) {
-						$uid = (string) $r['user_id'];
-						return ! in_array( $uid, $blocked_by_me, true ) && ! in_array( $uid, $blocked_me, true );
-					}
-				)
-			);
-		}
+	$viewer_id = (int) $viewer_id;
+	$user      = get_user_by( 'id', (int) $row['user_id'] );
+	$mine      = $viewer_id === (int) $row['user_id'];
+	$item      = array(
+		'id'         => (int) $row['id'],
+		'user_id'    => (int) $row['user_id'],
+		'content'    => $row['content'],
+		'mood'       => $row['mood'],
+		'visibility' => $row['visibility'],
+		'created_at' => $row['created_at'],
+		'updated_at' => $row['updated_at'],
+		'expires_at' => $row['expires_at'],
+		'mine'       => $mine,
+	);
+	if ( $user ) {
+		$item['user'] = array(
+			'id'           => $user->ID,
+			'display_name' => $user->display_name,
+			'avatar'       => get_avatar_url( $user->ID, array( 'size' => 64 ) ),
+		);
 	}
-	return rest_ensure_response( $list );
+	// Include moderation meta only for owner or users with moderate cap.
+	if ( $mine || current_user_can( 'dating_moderate' ) ) {
+		$item['flags_count']  = (int) $row['flags_count'];
+		$item['status_state'] = $row['status'];
+	}
+	return $item;
 }
 
 /**
- * REST API endpoint for single profile detail.
+ * GET /statuses handler.
+ */
+function wpmf_rest_statuses_list( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$user_filter = isset( $request['user_id'] ) ? (int) $request['user_id'] : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$viewer_id   = get_current_user_id();
+	$page        = max( 1, (int) $request['page'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$per_page    = (int) $request['per_page']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$per_page    = max( 1, min( 50, $per_page ) );
+	$args        = array(
+		'page'     => $page,
+		'per_page' => $per_page,
+	);
+	if ( $user_filter > 0 ) {
+		$rows  = wpmf_status_list_by_user( $user_filter, $viewer_id, $args );
+		$total = wpmf_status_count_by_user( $user_filter, $viewer_id );
+	} else {
+		$rows  = wpmf_status_list_global( $viewer_id, $args );
+		$total = wpmf_status_count_global( $viewer_id );
+	}
+	$data = array_map(
+		function ( $r ) use ( $viewer_id ) {
+			return wpmf_status_prepare_for_response( $r, $viewer_id );
+		},
+		$rows
+	);
+	$response = rest_ensure_response( $data );
+	$total_pages = $per_page > 0 ? (int) ceil( $total / $per_page ) : 0;
+	$response->header( 'X-WPMF-Total', (string) $total );
+	$response->header( 'X-WPMF-TotalPages', (string) $total_pages );
+	// Standard WordPress style headers for compatibility.
+	$response->header( 'X-WP-Total', (string) $total );
+	$response->header( 'X-WP-TotalPages', (string) $total_pages );
+	// RFC5988 Link headers for pagination.
+	if ( $total_pages > 0 ) {
+		$links = array();
+		$base  = rest_url( 'wpmatch-free/v1/statuses' );
+		$query_args = array( 'per_page' => $per_page );
+		if ( $user_filter > 0 ) {
+			$query_args['user_id'] = $user_filter;
+		}
+		if ( $page > 1 ) {
+			$prev_args = $query_args;
+			$prev_args['page'] = $page - 1;
+			$prev_url  = add_query_arg( $prev_args, $base );
+			/* translators: %s: URL for previous page of results. */
+			$links[]   = sprintf( '<%s>; rel="prev"', esc_url_raw( $prev_url ) );
+		}
+		if ( $page < $total_pages ) {
+			$next_args = $query_args;
+			$next_args['page'] = $page + 1;
+			$next_url  = add_query_arg( $next_args, $base );
+			/* translators: %s: URL for next page of results. */
+			$links[]   = sprintf( '<%s>; rel="next"', esc_url_raw( $next_url ) );
+		}
+		if ( ! empty( $links ) ) {
+			$response->header( 'Link', implode( ', ', $links ) );
+		}
+	}
+	return $response;
+}
+
+/**
+ * GET /statuses/mine
+ */
+function wpmf_rest_statuses_mine( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$viewer_id = get_current_user_id();
+	$page      = max( 1, (int) $request['page'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$per_page  = (int) $request['per_page']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$per_page  = max( 1, min( 50, $per_page ) );
+	$args      = array(
+		'page'     => $page,
+		'per_page' => $per_page,
+	);
+	$rows      = wpmf_status_list_by_user( $viewer_id, $viewer_id, $args );
+	$total     = wpmf_status_count_by_user( $viewer_id, $viewer_id );
+	$data      = array_map(
+		function ( $r ) use ( $viewer_id ) {
+			return wpmf_status_prepare_for_response( $r, $viewer_id );
+		},
+		$rows
+	);
+	$response = rest_ensure_response( $data );
+	$total_pages = $per_page > 0 ? (int) ceil( $total / $per_page ) : 0;
+	$response->header( 'X-WPMF-Total', (string) $total );
+	$response->header( 'X-WPMF-TotalPages', (string) $total_pages );
+	$response->header( 'X-WP-Total', (string) $total );
+	$response->header( 'X-WP-TotalPages', (string) $total_pages );
+	// RFC5988 Link headers for pagination.
+	if ( $total_pages > 0 ) {
+		$links = array();
+		$base  = rest_url( 'wpmatch-free/v1/statuses/mine' );
+		$query_args = array( 'per_page' => $per_page );
+		if ( $page > 1 ) {
+			$prev_args = $query_args;
+			$prev_args['page'] = $page - 1;
+			$prev_url  = add_query_arg( $prev_args, $base );
+			/* translators: %s: URL for previous page of results. */
+			$links[]   = sprintf( '<%s>; rel="prev"', esc_url_raw( $prev_url ) );
+		}
+		if ( $page < $total_pages ) {
+			$next_args = $query_args;
+			$next_args['page'] = $page + 1;
+			$next_url  = add_query_arg( $next_args, $base );
+			/* translators: %s: URL for next page of results. */
+			$links[]   = sprintf( '<%s>; rel="next"', esc_url_raw( $next_url ) );
+		}
+		if ( ! empty( $links ) ) {
+			$response->header( 'Link', implode( ', ', $links ) );
+		}
+	}
+	return $response;
+}
+
+/**
+ * GET /statuses/{id}
+ */
+function wpmf_rest_status_detail( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$viewer_id = get_current_user_id();
+	$status_id = (int) $request['id']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$result    = wpmf_status_get_by_id( $status_id, $viewer_id );
+	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+	return rest_ensure_response( wpmf_status_prepare_for_response( $result, $viewer_id ) );
+}
+
+/**
+ * POST /statuses
+ */
+function wpmf_rest_status_create( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$user_id = get_current_user_id();
+	$content = (string) $request['content']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$args    = array();
+	if ( isset( $request['visibility'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$args['visibility'] = sanitize_text_field( $request['visibility'] );
+	}
+	if ( isset( $request['mood'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$args['mood'] = sanitize_text_field( $request['mood'] );
+	}
+	if ( isset( $request['expires_at'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$args['expires_at'] = sanitize_text_field( $request['expires_at'] );
+	}
+	$status_id = wpmf_status_create( $user_id, $content, $args );
+	if ( is_wp_error( $status_id ) ) {
+		return $status_id;
+	}
+	$row = wpmf_status_get_by_id( $status_id, $user_id );
+	return rest_ensure_response( wpmf_status_prepare_for_response( $row, $user_id ) );
+}
+
+/**
+ * DELETE /statuses/{id}
+ */
+function wpmf_rest_status_delete( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$user_id   = get_current_user_id();
+	$status_id = (int) $request['id']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$result    = wpmf_status_delete( $status_id, $user_id );
+	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+	return rest_ensure_response(
+		array(
+			'deleted' => true,
+			'id'      => $status_id,
+		)
+	);
+}
+
+/**
+ * POST /statuses/{id}/flag
+ */
+function wpmf_rest_status_flag( WP_REST_Request $request ) { // phpcs:ignore WordPress.NamingConventions.ValidFunctionName.FunctionNameInvalid
+	$user_id   = get_current_user_id();
+	$status_id = (int) $request['id']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$reason    = isset( $request['reason'] ) ? sanitize_text_field( $request['reason'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	$result    = wpmf_status_flag( $status_id, $user_id, $reason );
+	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+	$row = wpmf_status_get_by_id( $status_id, $user_id );
+	if ( is_wp_error( $row ) ) {
+		// If now flagged / hidden and cannot view, still return success minimal.
+		return rest_ensure_response(
+			array(
+				'flagged' => true,
+				'id'      => $status_id,
+			)
+		);
+	}
+	return rest_ensure_response(
+		array(
+			'flagged' => true,
+			'status'  => wpmf_status_prepare_for_response( $row, $user_id ),
+		)
+	);
+}
+
+/**
+ * REST API: Create a new call
  *
- * @param WP_REST_Request $req Request object.
+ * @param WP_REST_Request $request Request object.
  * @return WP_REST_Response|WP_Error Response object or error.
- * @since 0.1.0
  */
-function wpmf_rest_profile_detail( WP_REST_Request $req ) {
-	$user_id = (int) $req['user_id'];
-	$profile = wpmf_profile_get_by_user_id( $user_id );
-	if ( ! $profile || $profile['status'] !== 'active' ) {
-		return new WP_Error( 'not_found', __( 'Profile not found', 'wpmatch-free' ), array( 'status' => 404 ) ); }
-	$current = get_current_user_id();
-	if ( $current ) {
-		global $wpdb;
-		$bt      = $wpdb->prefix . 'wpmf_blocks';
-		$blocked = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$bt} WHERE (actor_id=%d AND target_user_id=%d) OR (actor_id=%d AND target_user_id=%d)", $current, $user_id, $user_id, $current ) );
-		if ( $blocked ) {
-			return new WP_Error( 'forbidden', __( 'You cannot view this profile', 'wpmatch-free' ), array( 'status' => 403 ) ); }
+function wpmf_rest_call_create( WP_REST_Request $request ) {
+	$user_id      = get_current_user_id();
+	$recipient_id = (int) $request['recipient_id'];
+	$call_type    = sanitize_text_field( $request['call_type'] );
+	
+	// Validate recipient
+	if ( empty( $recipient_id ) || $recipient_id === $user_id ) {
+		return new WP_Error( 'invalid_recipient', 'Invalid recipient ID', array( 'status' => 400 ) );
 	}
-	return rest_ensure_response( $profile );
+	
+	// Create the call
+	$call_db_id = wpmf_create_call( $user_id, $recipient_id, $call_type );
+	
+	if ( ! $call_db_id ) {
+		return new WP_Error( 'call_creation_failed', 'Failed to create call', array( 'status' => 500 ) );
+	}
+	
+	// Get the created call
+	global $wpdb;
+	$call = $wpdb->get_row( $wpdb->prepare(
+		"SELECT * FROM {$wpdb->prefix}wpmf_calls WHERE id = %d",
+		$call_db_id
+	) );
+	
+	if ( ! $call ) {
+		return new WP_Error( 'call_not_found', 'Call not found after creation', array( 'status' => 500 ) );
+	}
+	
+	return rest_ensure_response( wpmf_prepare_call_for_response( $call, $user_id ) );
 }
 
 /**
- * REST API endpoint for current user's matches.
+ * REST API: Update call status
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
  */
-function wpmf_rest_matches_me( WP_REST_Request $req ) {
+function wpmf_rest_call_update_status( WP_REST_Request $request ) {
+	$user_id    = get_current_user_id();
+	$call_id    = sanitize_text_field( $request['call_id'] );
+	$status     = sanitize_text_field( $request['status'] );
+	$end_reason = isset( $request['end_reason'] ) ? sanitize_text_field( $request['end_reason'] ) : null;
+	
+	// Get the call to check permissions
+	$call = wpmf_get_call_by_id( $call_id );
+	if ( ! $call ) {
+		return new WP_Error( 'call_not_found', 'Call not found', array( 'status' => 404 ) );
+	}
+	
+	// Check if user is part of this call
+	if ( (int) $call->caller_id !== $user_id && (int) $call->recipient_id !== $user_id ) {
+		return new WP_Error( 'access_denied', 'You are not authorized to modify this call', array( 'status' => 403 ) );
+	}
+	
+	// Update the status
+	$success = wpmf_update_call_status( $call_id, $status, $end_reason );
+	
+	if ( ! $success ) {
+		return new WP_Error( 'update_failed', 'Failed to update call status', array( 'status' => 500 ) );
+	}
+	
+	// Get updated call
+	$updated_call = wpmf_get_call_by_id( $call_id );
+	
+	return rest_ensure_response( wpmf_prepare_call_for_response( $updated_call, $user_id ) );
+}
+
+/**
+ * REST API: Update call signaling data
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
+ */
+function wpmf_rest_call_update_signaling( WP_REST_Request $request ) {
+	$user_id        = get_current_user_id();
+	$call_id        = sanitize_text_field( $request['call_id'] );
+	$signaling_data = $request['signaling_data'];
+	
+	// Get the call to check permissions
+	$call = wpmf_get_call_by_id( $call_id );
+	if ( ! $call ) {
+		return new WP_Error( 'call_not_found', 'Call not found', array( 'status' => 404 ) );
+	}
+	
+	// Check if user is part of this call
+	if ( (int) $call->caller_id !== $user_id && (int) $call->recipient_id !== $user_id ) {
+		return new WP_Error( 'access_denied', 'You are not authorized to modify this call', array( 'status' => 403 ) );
+	}
+	
+	// Update signaling data
+	$success = wpmf_update_call_signaling( $call_id, $signaling_data );
+	
+	if ( ! $success ) {
+		return new WP_Error( 'update_failed', 'Failed to update signaling data', array( 'status' => 500 ) );
+	}
+	
+	return rest_ensure_response( array( 'success' => true ) );
+}
+
+/**
+ * REST API: Get call details
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
+ */
+function wpmf_rest_call_get( WP_REST_Request $request ) {
 	$user_id = get_current_user_id();
-	$me      = wpmf_profile_get_by_user_id( $user_id );
-	if ( ! $me ) {
-		return rest_ensure_response( array() ); }
-	global $wpdb;
-	$t     = $wpdb->prefix . 'wpmf_profiles';
-	$where = array( "status='active'", $wpdb->prepare( 'user_id != %d', $user_id ) );
-	if ( $me['region'] ) {
-		$where[] = $wpdb->prepare( 'region = %s', $me['region'] ); }
-	$sql  = 'SELECT * FROM ' . $t . ' WHERE ' . implode( ' AND ', $where ) . ' ORDER BY last_active DESC LIMIT 20';
-	$list = $wpdb->get_results( $sql, ARRAY_A );
-	$bt   = $wpdb->prefix . 'wpmf_blocks';
-	$uids = array_map( fn( $r )=> (int) $r['user_id'], $list );
-	if ( $uids ) {
-		$in            = implode( ',', array_fill( 0, count( $uids ), '%d' ) );
-		$q             = $wpdb->prepare( "SELECT DISTINCT target_user_id FROM {$bt} WHERE actor_id=%d AND target_user_id IN ($in)", array_merge( array( $user_id ), $uids ) );
-		$blocked_by_me = $wpdb->get_col( $q );
-		$q2            = $wpdb->prepare( "SELECT DISTINCT actor_id FROM {$bt} WHERE target_user_id=%d AND actor_id IN ($in)", array_merge( array( $user_id ), $uids ) );
-		$blocked_me    = $wpdb->get_col( $q2 );
-		$list          = array_values(
-			array_filter(
-				$list,
-				function ( $r ) use ( $blocked_by_me, $blocked_me ) {
-					$uid = (string) $r['user_id'];
-					return ! in_array( $uid, $blocked_by_me, true ) && ! in_array( $uid, $blocked_me, true );
-				}
-			)
-		);
+	$call_id = sanitize_text_field( $request['call_id'] );
+	
+	$call = wpmf_get_call_by_id( $call_id );
+	if ( ! $call ) {
+		return new WP_Error( 'call_not_found', 'Call not found', array( 'status' => 404 ) );
 	}
-	return rest_ensure_response( $list );
+	
+	// Check if user is part of this call
+	if ( (int) $call->caller_id !== $user_id && (int) $call->recipient_id !== $user_id ) {
+		return new WP_Error( 'access_denied', 'You are not authorized to view this call', array( 'status' => 403 ) );
+	}
+	
+	return rest_ensure_response( wpmf_prepare_call_for_response( $call, $user_id ) );
 }
 
 /**
- * REST API endpoint for users who liked current user.
+ * REST API: Get user's active calls
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
  */
-function wpmf_rest_likes_me( WP_REST_Request $req ) {
+function wpmf_rest_calls_active( WP_REST_Request $request ) {
 	$user_id = get_current_user_id();
-	global $wpdb;
-	$t    = $wpdb->prefix . 'wpmf_likes';
-	$sql  = $wpdb->prepare( "SELECT actor_id, created_at FROM {$t} WHERE target_user_id=%d ORDER BY id DESC LIMIT 50", $user_id );
-	$list = $wpdb->get_results( $sql, ARRAY_A );
-	return rest_ensure_response( $list );
+	
+	$calls = wpmf_get_user_active_calls( $user_id );
+	
+	$response_data = array_map( function( $call ) use ( $user_id ) {
+		return wpmf_prepare_call_for_response( $call, $user_id );
+	}, $calls );
+	
+	return rest_ensure_response( $response_data );
 }
 
 /**
- * REST API endpoint for user conversations list.
+ * REST API: Get user's call history
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
  */
-function wpmf_rest_conversations( WP_REST_Request $req ) {
-	$user_id  = get_current_user_id();
-	$page     = max( 1, (int) $req['page'] );
-	$per_page = min( 50, max( 1, (int) $req['per_page'] ) );
-	$offset   = ( $page - 1 ) * $per_page;
-
-	$conversations = wpmf_user_conversations( $user_id, $per_page, $offset );
-
-	// Add user details for each conversation
-	foreach ( $conversations as $key => $conversation ) {
-		$other_user = get_user_by( 'id', $conversation['other_user_id'] );
-		if ( $other_user ) {
-			$conversations[ $key ]['other_user'] = array(
-				'id'           => $other_user->ID,
-				'display_name' => $other_user->display_name,
-				'avatar'       => get_avatar_url( $other_user->ID, array( 'size' => 64 ) ),
-			);
-		}
-	}
-
-	return rest_ensure_response( $conversations );
-}
-
-/**
- * REST API endpoint for thread messages.
- *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
- */
-function wpmf_rest_thread_messages( WP_REST_Request $req ) {
-	$user_id   = get_current_user_id();
-	$thread_id = (int) $req['thread_id'];
-	$page      = max( 1, (int) $req['page'] );
-	$per_page  = min( 100, max( 1, (int) $req['per_page'] ) );
-	$offset    = ( $page - 1 ) * $per_page;
-
-	if ( ! $thread_id ) {
-		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
-	}
-
-	$messages = wpmf_thread_messages( $thread_id, $user_id, $per_page, $offset );
-
-	if ( empty( $messages ) ) {
-		// Check if user has access to this thread
-		global $wpdb;
-		$messages_table = $wpdb->prefix . 'wpmf_messages';
-		$access_check   = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$messages_table} 
-				WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
-				$thread_id,
-				$user_id,
-				$user_id
-			)
-		);
-
-		if ( ! $access_check ) {
-			return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
-		}
-	}
-
-	// Add user details to messages
-	foreach ( $messages as $key => $message ) {
-		$sender = get_user_by( 'id', $message['sender_id'] );
-		if ( $sender ) {
-			$messages[ $key ]['sender'] = array(
-				'id'           => $sender->ID,
-				'display_name' => $sender->display_name,
-				'avatar'       => get_avatar_url( $sender->ID, array( 'size' => 32 ) ),
-			);
-		}
-	}
-
-	return rest_ensure_response( $messages );
-}
-
-/**
- * REST API endpoint for sending messages.
- *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
- */
-function wpmf_rest_send_message( WP_REST_Request $req ) {
-	$sender_id    = get_current_user_id();
-	$recipient_id = (int) $req['recipient_id'];
-	$message      = sanitize_textarea_field( $req['message'] );
-
-	// Validate recipient exists and is not the sender
-	if ( $recipient_id === $sender_id ) {
-		return new WP_Error( 'invalid_recipient', __( 'You cannot send messages to yourself.', 'wpmatch-free' ), array( 'status' => 400 ) );
-	}
-
-	$recipient = get_user_by( 'id', $recipient_id );
-	if ( ! $recipient ) {
-		return new WP_Error( 'user_not_found', __( 'Recipient not found.', 'wpmatch-free' ), array( 'status' => 404 ) );
-	}
-
-	// Get or create thread
-	$thread_id = wpmf_thread_get_or_create( $sender_id, $recipient_id );
-	if ( ! $thread_id ) {
-		return new WP_Error( 'thread_error', __( 'Unable to create conversation thread.', 'wpmatch-free' ), array( 'status' => 500 ) );
-	}
-
-	// Send message
-	$result = wpmf_message_send( $thread_id, $sender_id, $recipient_id, $message );
-
-	if ( ! $result['success'] ) {
-		return new WP_Error( 'send_failed', $result['message'], array( 'status' => 400 ) );
-	}
-
-	// Return the sent message with user details
-	global $wpdb;
-	$messages_table = $wpdb->prefix . 'wpmf_messages';
-	$sent_message   = $wpdb->get_row(
-		$wpdb->prepare( "SELECT * FROM {$messages_table} WHERE id = %d", $result['message_id'] ),
-		ARRAY_A
-	);
-
-	if ( $sent_message ) {
-		$sender                 = get_user_by( 'id', $sender_id );
-		$sent_message['sender'] = array(
-			'id'           => $sender->ID,
-			'display_name' => $sender->display_name,
-			'avatar'       => get_avatar_url( $sender->ID, array( 'size' => 32 ) ),
-		);
-	}
-
-	return rest_ensure_response(
-		array(
-			'success' => true,
-			'message' => $result['message'],
-			'data'    => $sent_message,
-		)
-	);
-}
-
-/**
- * REST API endpoint for marking messages as read.
- *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
- */
-function wpmf_rest_mark_read( WP_REST_Request $req ) {
-	$user_id   = get_current_user_id();
-	$thread_id = (int) $req['thread_id'];
-
-	if ( ! $thread_id ) {
-		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
-	}
-
-	$result = wpmf_messages_mark_read( $thread_id, $user_id );
-
-	if ( ! $result ) {
-		return new WP_Error( 'mark_read_failed', __( 'Unable to mark messages as read.', 'wpmatch-free' ), array( 'status' => 500 ) );
-	}
-
-	return rest_ensure_response(
-		array(
-			'success' => true,
-			'message' => __( 'Messages marked as read.', 'wpmatch-free' ),
-		)
-	);
-}
-
-/**
- * REST API endpoint for unread message count.
- *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
- */
-function wpmf_rest_unread_count( WP_REST_Request $req ) {
+function wpmf_rest_calls_history( WP_REST_Request $request ) {
 	$user_id = get_current_user_id();
-	$count   = wpmf_user_unread_count( $user_id );
-
-	return rest_ensure_response(
-		array(
-			'count' => $count,
-		)
-	);
+	$limit   = (int) $request['limit'];
+	$offset  = (int) $request['offset'];
+	$type    = sanitize_text_field( $request['type'] );
+	
+	$calls = wpmf_get_user_call_history( $user_id, $limit, $offset, $type );
+	
+	$response_data = array_map( function( $call ) use ( $user_id ) {
+		return wpmf_prepare_call_for_response( $call, $user_id );
+	}, $calls );
+	
+	return rest_ensure_response( $response_data );
 }
 
 /**
- * REST API endpoint for searching messages.
+ * REST API: Get user's pending calls
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error Response object or error.
  */
-function wpmf_rest_search_messages( WP_REST_Request $req ) {
+function wpmf_rest_calls_pending( WP_REST_Request $request ) {
 	$user_id = get_current_user_id();
-	$query   = sanitize_text_field( $req['query'] );
-	$limit   = min( 100, max( 1, (int) $req['limit'] ) );
-
-	$results = wpmf_messages_search( $user_id, $query, $limit );
-
-	// Add user details to results
-	foreach ( $results as $key => $message ) {
-		$other_user = get_user_by( 'id', $message['other_user_id'] );
-		if ( $other_user ) {
-			$results[ $key ]['other_user'] = array(
-				'id'           => $other_user->ID,
-				'display_name' => $other_user->display_name,
-				'avatar'       => get_avatar_url( $other_user->ID, array( 'size' => 32 ) ),
-			);
-		}
-	}
-
-	return rest_ensure_response( $results );
+	
+	$calls = wpmf_get_user_pending_calls( $user_id );
+	
+	$response_data = array_map( function( $call ) use ( $user_id ) {
+		return wpmf_prepare_call_for_response( $call, $user_id );
+	}, $calls );
+	
+	return rest_ensure_response( $response_data );
 }
 
 /**
- * REST API endpoint for setting typing status.
+ * Prepare call data for REST response
  *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
+ * @param object $call    Call object from database.
+ * @param int    $user_id Current user ID.
+ * @return array Formatted call data.
  */
-function wpmf_rest_set_typing_status( WP_REST_Request $req ) {
-	$user_id   = get_current_user_id();
-	$thread_id = (int) $req['thread_id'];
-	$is_typing = (bool) $req['is_typing'];
-
-	if ( ! $thread_id ) {
-		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
+function wpmf_prepare_call_for_response( $call, $user_id ) {
+	$signaling_data = null;
+	if ( ! empty( $call->signaling_data ) ) {
+		$signaling_data = json_decode( $call->signaling_data, true );
 	}
-
-	// Verify user has access to this thread
-	global $wpdb;
-	$messages_table = $wpdb->prefix . 'wpmf_messages';
-	$access_check   = $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT COUNT(*) FROM {$messages_table} 
-			WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
-			$thread_id,
-			$user_id,
-			$user_id
-		)
-	);
-
-	if ( ! $access_check ) {
-		return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
-	}
-
-	$result = wpmf_typing_status_set( $thread_id, $user_id, $is_typing );
-
-	if ( ! $result ) {
-		return new WP_Error( 'update_failed', __( 'Failed to update typing status.', 'wpmatch-free' ), array( 'status' => 500 ) );
-	}
-
-	return rest_ensure_response(
-		array(
-			'success' => true,
-			'message' => __( 'Typing status updated.', 'wpmatch-free' ),
-		)
+	
+	$is_caller = (int) $call->caller_id === $user_id;
+	$other_user_id = $is_caller ? (int) $call->recipient_id : (int) $call->caller_id;
+	$other_user = get_user_by( 'id', $other_user_id );
+	
+	return array(
+		'id'             => $call->id,
+		'call_id'        => $call->call_id,
+		'caller_id'      => (int) $call->caller_id,
+		'recipient_id'   => (int) $call->recipient_id,
+		'call_type'      => $call->call_type,
+		'status'         => $call->status,
+		'started_at'     => $call->started_at,
+		'ended_at'       => $call->ended_at,
+		'duration_seconds' => (int) $call->duration_seconds,
+		'end_reason'     => $call->end_reason,
+		'created_at'     => $call->created_at,
+		'updated_at'     => $call->updated_at,
+		'direction'      => $is_caller ? 'outgoing' : 'incoming',
+		'other_user'     => array(
+			'id'           => $other_user_id,
+			'display_name' => $other_user ? $other_user->display_name : '',
+		),
+		'signaling_data' => $signaling_data,
 	);
 }
-
-/**
- * REST API endpoint for getting typing status.
- *
- * @param WP_REST_Request $req Request object.
- * @return WP_REST_Response Response object.
- * @since 0.1.0
- */
-function wpmf_rest_get_typing_status( WP_REST_Request $req ) {
-	$user_id   = get_current_user_id();
-	$thread_id = (int) $req['thread_id'];
-
-	if ( ! $thread_id ) {
-		return new WP_Error( 'invalid_thread', __( 'Invalid thread ID.', 'wpmatch-free' ), array( 'status' => 400 ) );
-	}
-
-	// Verify user has access to this thread
-	global $wpdb;
-	$messages_table = $wpdb->prefix . 'wpmf_messages';
-	$access_check   = $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT COUNT(*) FROM {$messages_table} 
-			WHERE thread_id = %d AND (sender_id = %d OR recipient_id = %d)",
-			$thread_id,
-			$user_id,
-			$user_id
-		)
-	);
-
-	if ( ! $access_check ) {
-		return new WP_Error( 'forbidden', __( 'You do not have access to this conversation.', 'wpmatch-free' ), array( 'status' => 403 ) );
-	}
-
-	$typing_users = wpmf_typing_status_get( $thread_id, $user_id );
-
-	return rest_ensure_response(
-		array(
-			'typing_users' => $typing_users,
-		)
-	);
-}
-
-// Schedule typing indicator cleanup
-add_action( 'wp', 'wpmf_schedule_typing_cleanup' );
-
-/**
- * Schedule typing indicator cleanup cron job.
- *
- * @since 0.1.0
- */
-function wpmf_schedule_typing_cleanup() {
-	if ( ! wp_next_scheduled( 'wpmf_cleanup_typing_indicators' ) ) {
-		wp_schedule_event( time(), 'hourly', 'wpmf_cleanup_typing_indicators' );
-	}
-}
-
-// Hook for typing indicator cleanup
-add_action( 'wpmf_cleanup_typing_indicators', 'wpmf_typing_status_cleanup' );

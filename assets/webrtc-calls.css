@@ -1,0 +1,509 @@
+/**
+ * WebRTC Calls CSS Styles
+ * 
+ * Styling for audio/video calling functionality
+ * 
+ * @package WPMatch_Free
+ * @subpackage Assets
+ * @since 1.0.0
+ */
+
+/* Incoming Call Notification */
+.wpmf-incoming-call-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.95);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    animation: slideIn 0.3s ease-out;
+    min-width: 320px;
+}
+
+.wpmf-call-notification-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.wpmf-call-info h3 {
+    margin: 0 0 5px 0;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.wpmf-call-info p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95em;
+}
+
+.wpmf-call-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.wpmf-call-actions button {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Call Interface */
+.wpmf-call-interface {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background: linear-gradient(135deg, #1f2937, #111827);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.wpmf-call-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    max-width: 1200px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.wpmf-call-header {
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+    padding: 20px 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.wpmf-call-header h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.wpmf-call-status {
+    margin: 5px 0;
+    color: #fbbf24;
+    font-weight: 500;
+    font-size: 1.1em;
+}
+
+.wpmf-call-status.connected {
+    color: #10b981;
+}
+
+.wpmf-call-participant {
+    margin: 10px 0 0 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.2em;
+    font-weight: 500;
+}
+
+/* Video Container */
+.wpmf-video-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    min-height: 400px;
+}
+
+.wpmf-remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #1f2937;
+}
+
+.wpmf-local-video {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 200px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    background: #374151;
+}
+
+/* Call Controls */
+.wpmf-call-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.btn-control {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.btn-control:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.btn-control.muted {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.wpmf-end-call-btn {
+    padding: 15px 30px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+/* Call Buttons in Profile/Chat */
+.wpmf-call-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-size: 0.95em;
+}
+
+.wpmf-call-btn:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+    text-decoration: none;
+    color: white;
+}
+
+.wpmf-call-btn i {
+    font-size: 1.1em;
+}
+
+.wpmf-call-btn.audio-call {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.wpmf-call-btn.audio-call:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+/* Error Notifications */
+.wpmf-call-error {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+    animation: slideDown 0.3s ease-out;
+    max-width: 400px;
+}
+
+.error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.error-content i {
+    font-size: 1.2em;
+    color: #fbbf24;
+}
+
+.error-content p {
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Call History Styles */
+.wpmf-call-history {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.wpmf-call-history h3 {
+    margin: 0 0 20px 0;
+    color: #1f2937;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.wpmf-call-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.wpmf-call-item:last-child {
+    border-bottom: none;
+}
+
+.wpmf-call-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.wpmf-call-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+}
+
+.wpmf-call-icon.incoming {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.wpmf-call-icon.outgoing {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+}
+
+.wpmf-call-icon.missed {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+.wpmf-call-info h4 {
+    margin: 0 0 5px 0;
+    color: #1f2937;
+    font-weight: 600;
+}
+
+.wpmf-call-info p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9em;
+}
+
+.wpmf-call-meta {
+    text-align: right;
+    color: #6b7280;
+    font-size: 0.85em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .wpmf-incoming-call-notification {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+    }
+    
+    .wpmf-call-container {
+        padding: 10px;
+    }
+    
+    .wpmf-local-video {
+        width: 120px;
+        height: 90px;
+        bottom: 10px;
+        right: 10px;
+    }
+    
+    .wpmf-call-controls {
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .btn-control {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3em;
+    }
+    
+    .wpmf-call-history {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .wpmf-call-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .wpmf-call-details {
+        width: 100%;
+    }
+    
+    .wpmf-call-meta {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .wpmf-call-actions {
+        flex-direction: column;
+    }
+    
+    .wpmf-call-controls {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .wpmf-end-call-btn {
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .wpmf-call-history {
+        background: #374151;
+        color: white;
+    }
+    
+    .wpmf-call-history h3 {
+        color: white;
+    }
+    
+    .wpmf-call-item {
+        border-bottom-color: #4b5563;
+    }
+    
+    .wpmf-call-info h4 {
+        color: white;
+    }
+    
+    .wpmf-call-info p,
+    .wpmf-call-meta {
+        color: #d1d5db;
+    }
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Video Loading States */
+.wpmf-remote-video:empty::before {
+    content: "Waiting for video...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.2em;
+}
+
+.wpmf-local-video:empty::before {
+    content: "Your video";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9em;
+}

@@ -135,8 +135,7 @@ function wpmf_sc_profile_edit() {
 				$out .= '<svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">';
 				$out .= '<path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>';
 				$out .= '</svg>';
-				$out .= esc_html__( 'Delete', 'wpmatch-free' );
-				$out .= '</button>';
+				$out .= esc_html__( 'Delete', 'wpmatch-free' ) . '</button>';
 				$out .= '</div>';
 				$out .= '</div>';
 				$out .= '</div>';
@@ -338,6 +337,20 @@ function wpmf_sc_search_form() {
 add_shortcode( 'wpmf_search_form', 'wpmf_sc_search_form' );
 
 function wpmf_sc_search_results() {
+	// Enqueue profile views tracking for automatic logging
+	if ( is_user_logged_in() ) {
+		wp_enqueue_script( 'wpmf-profile-views' );
+		wp_localize_script(
+			'wpmf-profile-views',
+			'wpmfProfileViews',
+			array(
+				'apiUrl' => rest_url( 'wpmatch-free/v1' ),
+				'nonce'  => wp_create_nonce( 'wp_rest' ),
+				'userId' => get_current_user_id(),
+			)
+		);
+	}
+
 	// Prepare search filters
 	$filters = array();
 	if ( ! empty( $_GET['region'] ) ) {
@@ -401,7 +414,7 @@ function wpmf_sc_search_results() {
 	// Results grid
 	$out .= '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">';
 	foreach ( $pagination_data['results'] as $r ) {
-		$out .= '<div class="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer" data-user-id="' . esc_attr( $r['user_id'] ) . '">';
+		$out .= '<div class="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden border border-gray-200 dark:border-gray-700 cursor-pointer" data-user-id="' . esc_attr( $r['user_id'] ) . '" data-profile-user-id="' . esc_attr( $r['user_id'] ) . '" data-view-source="search">';
 
 		// Add profile photo if available
 		$user_photos   = wpmf_photos_list_by_user( (int) $r['user_id'] );
@@ -479,8 +492,25 @@ function wpmf_sc_search_results() {
 		}
 		$out .= '</div>';
 
-		// Call to action
+		// Call to action with call buttons
 		$out .= '<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">';
+		
+		// Add call buttons if user is logged in
+		if ( is_user_logged_in() && get_current_user_id() !== (int) $r['user_id'] ) {
+			$out .= '<div class="flex gap-2 mb-3">';
+			$out .= '<button class="wpmf-call-btn audio-call flex-1" data-recipient-id="' . esc_attr( $r['user_id'] ) . '" data-call-type="audio" style="font-size: 0.8em; padding: 8px 12px;">';
+			$out .= '<i class="fas fa-phone"></i> Audio';
+			$out .= '</button>';
+			$out .= '<button class="wpmf-call-btn video-call flex-1" data-recipient-id="' . esc_attr( $r['user_id'] ) . '" data-call-type="video" style="font-size: 0.8em; padding: 8px 12px;">';
+			$out .= '<i class="fas fa-video"></i> Video';
+			$out .= '</button>';
+			$out .= '</div>';
+			
+			// Enqueue WebRTC assets when call buttons are present
+			wp_enqueue_script( 'wpmf-webrtc-calls' );
+			wp_enqueue_style( 'wpmf-webrtc-calls' );
+		}
+		
 		$out .= '<div class="flex items-center justify-between">';
 		$out .= '<span class="text-xs text-gray-500 dark:text-gray-400">' . esc_html__( 'Click to view profile', 'wpmatch-free' ) . '</span>';
 		$out .= '<svg class="w-4 h-4 text-gray-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 20 20">';
@@ -796,7 +826,7 @@ function wpmf_sc_messages_inbox( $atts ) {
 		<div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-6 py-4 flex items-center justify-between">
 			<h3 class="text-2xl font-bold text-white flex items-center">
 				<svg class="w-7 h-7 mr-3" fill="currentColor" viewBox="0 0 20 20">
-					<path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>
+					<path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>';
 				</svg>
 				<?php esc_html_e( 'Messages', 'wpmatch-free' ); ?>
 			</h3>
@@ -919,7 +949,7 @@ function wpmf_sc_conversation( $atts ) {
 				<button type="submit" class="wpmf-send-button bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-6 py-3 rounded-2xl font-semibold transition-all duration-200 transform hover:scale-105 focus:ring-4 focus:ring-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
 					<span class="wpmf-send-text flex items-center">
 						<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-							<path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+							<path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14a1 1 0 00-.36-1.58Z"></path>
 						</svg>
 						<?php esc_html_e( 'Send', 'wpmatch-free' ); ?>
 					</span>
@@ -935,3 +965,758 @@ function wpmf_sc_conversation( $atts ) {
 	return ob_get_clean();
 }
 add_shortcode( 'wpmf_conversation', 'wpmf_sc_conversation' );
+
+/**
+ * Interaction buttons shortcode for profile pages.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_interaction_buttons( $atts ) {
+	$atts = shortcode_atts(
+		array(
+			'user_id' => 0,
+			'show'    => 'all', // all, like, wink, gift, super_like
+		),
+		$atts
+	);
+
+	$user_id = (int) $atts['user_id'];
+	if ( ! $user_id || ! get_userdata( $user_id ) ) {
+		return '';
+	}
+
+	// Don't show buttons for current user
+	$current_user_id = get_current_user_id();
+	if ( $current_user_id === $user_id || ! $current_user_id ) {
+		return '';
+	}
+
+	// Check if users are blocked
+	if ( wpmf_users_blocked( $current_user_id, $user_id ) ) {
+		return '';
+	}
+
+	// Enqueue scripts and styles
+	wp_enqueue_script( 'wpmf-interactions' );
+	wp_enqueue_style( 'wpmf-interactions' );
+
+	$show_buttons = explode( ',', $atts['show'] );
+	$show_buttons = array_map( 'trim', $show_buttons );
+
+	$buttons = array();
+
+	if ( in_array( 'all', $show_buttons ) || in_array( 'like', $show_buttons ) ) {
+		$buttons[] = sprintf(
+			'<button class="wpmf-interaction-btn wpmf-like-btn" data-user-id="%d" type="button">
+				<span>❤️</span>
+				%s
+			</button>',
+			$user_id,
+			esc_html__( 'Like', 'wpmatch-free' )
+		);
+	}
+
+	if ( in_array( 'all', $show_buttons ) || in_array( 'super_like', $show_buttons ) ) {
+		$buttons[] = sprintf(
+			'<button class="wpmf-interaction-btn wpmf-super-like-btn" data-user-id="%d" type="button">
+				<span>💖</span>
+				%s
+			</button>',
+			$user_id,
+			esc_html__( 'Super Like', 'wpmatch-free' )
+		);
+	}
+
+	if ( in_array( 'all', $show_buttons ) || in_array( 'wink', $show_buttons ) ) {
+		$buttons[] = sprintf(
+			'<button class="wpmf-interaction-btn wpmf-wink-btn" data-user-id="%d" type="button">
+				<span>😉</span>
+				%s
+			</button>',
+			$user_id,
+			esc_html__( 'Wink', 'wpmatch-free' )
+		);
+	}
+
+	if ( in_array( 'all', $show_buttons ) || in_array( 'gift', $show_buttons ) ) {
+		$buttons[] = sprintf(
+			'<button class="wpmf-interaction-btn wpmf-gift-btn" data-user-id="%d" type="button">
+				<span>🎁</span>
+				%s
+			</button>',
+			$user_id,
+			esc_html__( 'Send Gift', 'wpmatch-free' )
+		);
+	}
+
+	if ( empty( $buttons ) ) {
+		return '';
+	}
+
+	return sprintf(
+		'<div class="wpmf-interaction-buttons">%s</div>',
+		implode( '', $buttons )
+	);
+}
+add_shortcode( 'wpmf_interaction_buttons', 'wpmf_sc_interaction_buttons' );
+
+/**
+ * Received interactions display shortcode.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_interactions_received( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . esc_html__( 'Please log in to view your interactions.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'limit'  => 20,
+			'type'   => '', // like, wink, gift, super_like
+			'status' => '', // sent, seen
+			'title'  => __( 'Recent Interactions', 'wpmatch-free' ),
+		),
+		$atts
+	);
+
+	// Enqueue scripts and styles
+	wp_enqueue_script( 'wpmf-interactions' );
+	wp_enqueue_style( 'wpmf-interactions' );
+
+	$output = '<div class="wpmf-interactions-widget">';
+
+	if ( ! empty( $atts['title'] ) ) {
+		$output .= sprintf( '<h3 class="wpmf-interactions-title">%s</h3>', esc_html( $atts['title'] ) );
+	}
+
+	$output .= '<div class="wpmf-interactions-received" data-limit="' . esc_attr( $atts['limit'] ) . '" data-type="' . esc_attr( $atts['type'] ) . '" data-status="' . esc_attr( $atts['status'] ) . '">';
+	$output .= '<div class="wpmf-interactions-loading">' . esc_html__( 'Loading interactions...', 'wpmatch-free' ) . '</div>';
+	$output .= '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_interactions_received', 'wpmf_sc_interactions_received' );
+
+/**
+ * Interaction stats shortcode.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_interaction_stats( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'show_title' => 'yes',
+		),
+		$atts
+	);
+
+	$user_id = get_current_user_id();
+	$stats   = wpmf_get_interaction_stats( $user_id );
+
+	$output = '<div class="wpmf-interaction-stats">';
+
+	if ( 'yes' === $atts['show_title'] ) {
+		$output .= '<h3 class="wpmf-stats-title">' . esc_html__( 'Your Interaction Stats', 'wpmatch-free' ) . '</h3>';
+	}
+
+	$output .= '<div class="wpmf-stats-grid">';
+
+	// Sent stats
+	$sent_total = array_sum( $stats['sent'] );
+	$output    .= sprintf(
+		'<div class="wpmf-stat-card">
+			<div class="wpmf-stat-number">%d</div>
+			<div class="wpmf-stat-label">%s</div>
+		</div>',
+		$sent_total,
+		esc_html__( 'Sent', 'wpmatch-free' )
+	);
+
+	// Received stats
+	$received_total = array_sum( $stats['received'] );
+	$output        .= sprintf(
+		'<div class="wpmf-stat-card">
+			<div class="wpmf-stat-number">%d</div>
+			<div class="wpmf-stat-label">%s</div>
+		</div>',
+		$received_total,
+		esc_html__( 'Received', 'wpmatch-free' )
+	);
+
+	// Matches
+	$output .= sprintf(
+		'<div class="wpmf-stat-card wpmf-stat-highlight">
+			<div class="wpmf-stat-number">%d</div>
+			<div class="wpmf-stat-label">%s</div>
+		</div>',
+		$stats['matches'],
+		esc_html__( 'Matches', 'wpmatch-free' )
+	);
+
+	$output .= '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_interaction_stats', 'wpmf_sc_interaction_stats' );
+
+/**
+ * Profile view statistics shortcode.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_profile_view_stats( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . esc_html__( 'Please log in to view your profile statistics.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'days'       => 30,
+			'show_title' => 'yes',
+		),
+		$atts
+	);
+
+	$user_id = get_current_user_id();
+	$days    = absint( $atts['days'] );
+
+	// Enqueue profile views assets
+	wp_enqueue_script( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.js', array(), '1.0.0', true );
+	wp_enqueue_style( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.css', array(), '1.0.0' );
+	wp_localize_script(
+		'wpmf-profile-views',
+		'wpmfProfileViews',
+		array(
+			'apiUrl' => rest_url( 'wpmatch-free/v1' ),
+			'nonce'  => wp_create_nonce( 'wp_rest' ),
+			'userId' => $user_id,
+		)
+	);
+
+	$output = '<div class="wpmf-view-stats">';
+
+	if ( 'yes' === $atts['show_title'] ) {
+		$output .= '<div class="wpmf-views-section-header">';
+		$output .= '<h3 class="wpmf-views-section-title">' . esc_html__( 'Profile View Statistics', 'wpmatch-free' ) . '</h3>';
+		$output .= '<div class="wpmf-view-filters">';
+		$output .= '<div class="wpmf-view-filter-group">';
+		$output .= '<label>' . esc_html__( 'Period', 'wpmatch-free' ) . '</label>';
+		$output .= '<select class="wpmf-view-filter wpmf-days-filter">';
+		$output .= '<option value="7"' . selected( $days, 7, false ) . '>' . esc_html__( 'Last 7 days', 'wpmatch-free' ) . '</option>';
+		$output .= '<option value="30"' . selected( $days, 30, false ) . '>' . esc_html__( 'Last 30 days', 'wpmatch-free' ) . '</option>';
+		$output .= '<option value="90"' . selected( $days, 90, false ) . '>' . esc_html__( 'Last 3 months', 'wpmatch-free' ) . '</option>';
+		$output .= '<option value="0"' . selected( $days, 0, false ) . '>' . esc_html__( 'All time', 'wpmatch-free' ) . '</option>';
+		$output .= '</select>';
+		$output .= '</div>';
+		$output .= '<button type="button" class="wpmf-refresh-views">' . esc_html__( 'Refresh', 'wpmatch-free' ) . '</button>';
+		$output .= '</div>';
+	}
+
+	// Stats will be loaded via JavaScript
+	$output .= '<div class="wpmf-loading">' . esc_html__( 'Loading statistics...', 'wpmatch-free' ) . '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_profile_view_stats', 'wpmf_sc_profile_view_stats' );
+
+/**
+ * "Who viewed me" shortcode.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_who_viewed_me( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . esc_html__( 'Please log in to see who viewed your profile.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'days'       => 30,
+			'limit'      => 20,
+			'show_title' => 'yes',
+		),
+		$atts
+	);
+
+	$user_id = get_current_user_id();
+
+	// Enqueue profile views assets
+	wp_enqueue_script( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.js', array(), '1.0.0', true );
+	wp_enqueue_style( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.css', array(), '1.0.0' );
+	wp_localize_script(
+		'wpmf-profile-views',
+		'wpmfProfileViews',
+		array(
+			'apiUrl' => rest_url( 'wpmatch-free/v1' ),
+			'nonce'  => wp_create_nonce( 'wp_rest' ),
+			'userId' => $user_id,
+		)
+	);
+
+	$output = '<div class="wpmf-who-viewed-me">';
+
+	if ( 'yes' === $atts['show_title'] ) {
+		$output .= '<div class="wpmf-views-section-header">';
+		$output .= '<h3 class="wpmf-views-section-title">' . esc_html__( 'Who Viewed My Profile', 'wpmatch-free' ) . '</h3>';
+		$output .= '</div>';
+	}
+
+	// Filter controls
+	$output .= '<div class="wpmf-view-filters">';
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Period', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-days-filter">';
+	$output .= '<option value="7">' . esc_html__( 'Last 7 days', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="30" selected>' . esc_html__( 'Last 30 days', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="90">' . esc_html__( 'Last 3 months', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="0">' . esc_html__( 'All time', 'wpmatch-free' ) . '</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Results', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-limit-filter">';
+	$output .= '<option value="10">10</option>';
+	$output .= '<option value="20" selected>20</option>';
+	$output .= '<option value="50">50</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Source', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-source-filter">';
+	$output .= '<option value="">' . esc_html__( 'All sources', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="profile">' . esc_html__( 'Profile page', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="search">' . esc_html__( 'Search results', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="messaging">' . esc_html__( 'Messaging', 'wpmatch-free' ) . '</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<button type="button" class="wpmf-refresh-views">' . esc_html__( 'Refresh', 'wpmatch-free' ) . '</button>';
+	$output .= '</div>';
+
+	// Content will be loaded via JavaScript
+	$output .= '<div class="wpmf-loading">' . esc_html__( 'Loading profile viewers...', 'wpmatch-free' ) . '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_who_viewed_me', 'wpmf_sc_who_viewed_me' );
+
+/**
+ * "My profile views" shortcode.
+ *
+ * @since 1.0.0
+ * @param array $atts Shortcode attributes.
+ * @return string HTML output.
+ */
+function wpmf_sc_my_profile_views( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . esc_html__( 'Please log in to see your profile view history.', 'wpmatch-free' ) . '</p>';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'days'       => 30,
+			'limit'      => 20,
+			'show_title' => 'yes',
+		),
+		$atts
+	);
+
+	$user_id = get_current_user_id();
+
+	// Enqueue profile views assets
+	wp_enqueue_script( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.js', array(), '1.0.0', true );
+	wp_enqueue_style( 'wpmf-profile-views', plugin_dir_url( __DIR__ ) . 'assets/profile-views.css', array(), '1.0.0' );
+	wp_localize_script(
+		'wpmf-profile-views',
+		'wpmfProfileViews',
+		array(
+			'apiUrl' => rest_url( 'wpmatch-free/v1' ),
+			'nonce'  => wp_create_nonce( 'wp_rest' ),
+			'userId' => $user_id,
+		)
+	);
+
+	$output = '<div class="wpmf-my-views">';
+
+	if ( 'yes' === $atts['show_title'] ) {
+		$output .= '<div class="wpmf-views-section-header">';
+		$output .= '<h3 class="wpmf-views-section-title">' . esc_html__( 'Profiles I Viewed', 'wpmatch-free' ) . '</h3>';
+		$output .= '</div>';
+	}
+
+	// Filter controls
+	$output .= '<div class="wpmf-view-filters">';
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Period', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-days-filter">';
+	$output .= '<option value="7">' . esc_html__( 'Last 7 days', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="30" selected>' . esc_html__( 'Last 30 days', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="90">' . esc_html__( 'Last 3 months', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="0">' . esc_html__( 'All time', 'wpmatch-free' ) . '</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Results', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-limit-filter">';
+	$output .= '<option value="10">10</option>';
+	$output .= '<option value="20" selected>20</option>';
+	$output .= '<option value="50">50</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<div class="wpmf-view-filter-group">';
+	$output .= '<label>' . esc_html__( 'Source', 'wpmatch-free' ) . '</label>';
+	$output .= '<select class="wpmf-view-filter wpmf-source-filter">';
+	$output .= '<option value="">' . esc_html__( 'All sources', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="profile">' . esc_html__( 'Profile page', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="search">' . esc_html__( 'Search results', 'wpmatch-free' ) . '</option>';
+	$output .= '<option value="messaging">' . esc_html__( 'Messaging', 'wpmatch-free' ) . '</option>';
+	$output .= '</select>';
+	$output .= '</div>';
+
+	$output .= '<button type="button" class="wpmf-refresh-views">' . esc_html__( 'Refresh', 'wpmatch-free' ) . '</button>';
+	$output .= '</div>';
+
+	// Content will be loaded via JavaScript
+	$output .= '<div class="wpmf-loading">' . esc_html__( 'Loading viewed profiles...', 'wpmatch-free' ) . '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_my_profile_views', 'wpmf_sc_my_profile_views' );
+
+/**
+ * Status feed shortcode.
+ * Usage: [wpmf_status_feed user_id="" per_page="10" show_composer="yes"]
+ */
+function wpmf_sc_status_feed( $atts ) {
+	$atts = shortcode_atts(
+		array(
+			'user_id'       => 0,
+			'per_page'      => 10,
+			'show_composer' => 'yes',
+		),
+		$atts
+	);
+
+	$user_filter   = (int) $atts['user_id'];
+	$per_page      = max( 1, min( 50, (int) $atts['per_page'] ) );
+	$show_composer = ( 'yes' === strtolower( $atts['show_composer'] ) );
+	$current_user  = get_current_user_id();
+
+	// Enqueue JS/CSS (reuse existing blocks css for now, could add dedicated file later)
+	wp_enqueue_script( 'wpmf-statuses', plugin_dir_url( __DIR__ ) . 'assets/statuses.js', array( 'jquery' ), WPMATCH_FREE_VERSION, true );
+	wp_localize_script(
+		'wpmf-statuses',
+		'wpmfStatuses',
+		array(
+			'apiUrl'            => rest_url( 'wpmatch-free/v1' ),
+			'nonce'             => wp_create_nonce( 'wp_rest' ),
+			'viewerId'          => $current_user,
+			'perPage'           => $per_page,
+			'userFilter'        => $user_filter,
+			'visibilityOptions' => apply_filters( 'wpmf_status_visibility_options', array( 'public', 'members', 'friends', 'private' ) ),
+			'messages'          => array(
+				'postSuccess'   => __( 'Status posted!', 'wpmatch-free' ),
+				'postError'     => __( 'Could not post status.', 'wpmatch-free' ),
+				'loadError'     => __( 'Failed to load statuses.', 'wpmatch-free' ),
+				'deleteConfirm' => __( 'Delete this status?', 'wpmatch-free' ),
+			),
+		)
+	);
+
+	$output = '<div class="wpmf-status-feed-wrapper" data-user="' . esc_attr( $user_filter ) . '" data-per-page="' . esc_attr( $per_page ) . '">';
+
+	if ( $show_composer && is_user_logged_in() && ( 0 === $user_filter || $user_filter === $current_user ) ) {
+		$output .= wpmf_status_composer_html();
+	}
+
+	$output .= '<div class="wpmf-status-list space-y-4 mt-4" aria-live="polite" aria-busy="true">';
+	$output .= '<div class="text-center text-gray-500 dark:text-gray-400 py-6 loading-indicator">' . esc_html__( 'Loading statuses...', 'wpmatch-free' ) . '</div>';
+	$output .= '</div>';
+	$output .= '<div class="wpmf-status-feed-actions mt-6 text-center hidden">';
+	$output .= '<button type="button" class="wpmf-load-more-statuses px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold shadow hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition">' . esc_html__( 'Load More', 'wpmatch-free' ) . '</button>';
+	$output .= '</div>';
+	$output .= '</div>';
+
+	return $output;
+}
+add_shortcode( 'wpmf_status_feed', 'wpmf_sc_status_feed' );
+
+/**
+ * Composer HTML helper (reusable).
+ *
+ * @return string
+ */
+function wpmf_status_composer_html() {
+	$visibility_options = apply_filters( 'wpmf_status_visibility_options', array( 'public', 'members', 'friends', 'private' ) );
+	$out                = '<div class="wpmf-status-composer bg-white dark:bg-gray-800 rounded-2xl shadow p-5 border border-gray-200 dark:border-gray-700">';
+	$out               .= '<form class="wpmf-status-form space-y-4" data-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '">';
+	$out               .= '<div class="flex items-start space-x-3">';
+	$out               .= '<div class="flex-1">';
+	$out               .= '<textarea name="content" maxlength="' . esc_attr( (int) apply_filters( 'wpmf_status_max_length', 500 ) ) . '" rows="3" class="wpmf-status-text w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none" placeholder="' . esc_attr__( 'Share what you are doing or feeling...', 'wpmatch-free' ) . '" required></textarea>';
+	$out               .= '<div class="flex items-center justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">';
+	$out               .= '<span class="char-count">0/' . esc_html( (int) apply_filters( 'wpmf_status_max_length', 500 ) ) . '</span>';
+	$out               .= '<span class="daily-limit text-right">' . esc_html__( 'Daily limit applies', 'wpmatch-free' ) . '</span>';
+	$out               .= '</div>';
+	$out               .= '</div>';
+	$out               .= '</div>';
+	$out               .= '<div class="flex flex-wrap gap-3 items-center">';
+	$out               .= '<select name="visibility" class="wpmf-status-visibility px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm">';
+	foreach ( $visibility_options as $vis ) {
+		$out .= '<option value="' . esc_attr( $vis ) . '">' . esc_html( ucfirst( $vis ) ) . '</option>';
+	}
+	$out .= '</select>';
+	$out .= '<input type="text" name="mood" class="wpmf-status-mood px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" placeholder="' . esc_attr__( 'Mood (optional)', 'wpmatch-free' ) . '" />';
+	$out .= '<button type="submit" class="wpmf-status-submit inline-flex items-center px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold shadow hover:from-emerald-600 hover:to-teal-700 focus:outline-none focus:ring-4 focus:ring-emerald-500/30 transition">';
+	$out .= '<svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M2.94 2.94a1.5 1.5 0 0 1 1.58-.36l12 4a1.5 1.5 0 0 1 0 2.84l-5.55 1.85a1.5 1.5 0 0 0-.95.95l-1.85 5.55a1.5 1.5 0 0 1-2.84 0l-4-12a1.5 1.5 0 0 1 .36-1.58Z"/></svg>';
+	$out .= esc_html__( 'Post Status', 'wpmatch-free' );
+	$out .= '</button>';
+	$out .= '</div>';
+	$out .= '<div class="wpmf-status-feedback mt-2 text-sm" aria-live="polite"></div>';
+	$out .= '</form>';
+	$out .= '</div>';
+	return $out;
+}
+
+/**
+ * Standalone composer shortcode [wpmf_status_composer]
+ */
+function wpmf_sc_status_composer( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>' . esc_html__( 'You must be logged in to post a status.', 'wpmatch-free' ) . '</p>';
+	}
+	// Ensure script localized once
+	if ( ! wp_script_is( 'wpmf-statuses', 'enqueued' ) ) {
+		wp_enqueue_script( 'wpmf-statuses', plugin_dir_url( __DIR__ ) . 'assets/statuses.js', array( 'jquery' ), WPMATCH_FREE_VERSION, true );
+		wp_localize_script(
+			'wpmf-statuses',
+			'wpmfStatuses',
+			array(
+				'apiUrl'            => rest_url( 'wpmatch-free/v1' ),
+				'nonce'             => wp_create_nonce( 'wp_rest' ),
+				'viewerId'          => get_current_user_id(),
+				'perPage'           => 10,
+				'userFilter'        => 0,
+				'visibilityOptions' => apply_filters( 'wpmf_status_visibility_options', array( 'public', 'members', 'friends', 'private' ) ),
+				'messages'          => array(
+					'postSuccess'   => __( 'Status posted!', 'wpmatch-free' ),
+					'postError'     => __( 'Could not post status.', 'wpmatch-free' ),
+					'loadError'     => __( 'Failed to load statuses.', 'wpmatch-free' ),
+					'deleteConfirm' => __( 'Delete this status?', 'wpmatch-free' ),
+				),
+			)
+		);
+	}
+	return wpmf_status_composer_html();
+}
+add_shortcode( 'wpmf_status_composer', 'wpmf_sc_status_composer' );
+
+/**
+ * Call Button Shortcode
+ * 
+ * Displays audio/video call buttons for a user
+ * Usage: [wpmf_call_buttons user_id="123"]
+ */
+function wpmf_sc_call_buttons( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>Please log in to access calling features.</p>';
+	}
+	
+	$atts = shortcode_atts( array(
+		'user_id' => '',
+		'show_audio' => 'true',
+		'show_video' => 'true',
+		'size' => 'normal',
+	), $atts );
+	
+	$user_id = (int) $atts['user_id'];
+	if ( empty( $user_id ) || $user_id === get_current_user_id() ) {
+		return '<p>Invalid user for calling.</p>';
+	}
+	
+	$user = get_user_by( 'id', $user_id );
+	if ( ! $user ) {
+		return '<p>User not found.</p>';
+	}
+	
+	// Check if users can communicate
+	if ( function_exists( 'wpmf_can_users_communicate' ) && 
+		 ! wpmf_can_users_communicate( get_current_user_id(), $user_id ) ) {
+		return '<p>Calling is not available with this user.</p>';
+	}
+	
+	// Enqueue assets
+	wp_enqueue_script( 'wpmf-webrtc-calls' );
+	wp_enqueue_style( 'wpmf-webrtc-calls' );
+	
+	$size_class = $atts['size'] === 'small' ? 'btn-sm' : '';
+	$output = '<div class="wpmf-call-buttons ' . esc_attr( $size_class ) . '">';
+	
+	if ( $atts['show_audio'] === 'true' ) {
+		$output .= '<button class="wpmf-call-btn audio-call" data-recipient-id="' . esc_attr( $user_id ) . '" data-call-type="audio">';
+		$output .= '<i class="fas fa-phone"></i> Audio Call';
+		$output .= '</button>';
+	}
+	
+	if ( $atts['show_video'] === 'true' ) {
+		$output .= '<button class="wpmf-call-btn video-call" data-recipient-id="' . esc_attr( $user_id ) . '" data-call-type="video">';
+		$output .= '<i class="fas fa-video"></i> Video Call';
+		$output .= '</button>';
+	}
+	
+	$output .= '</div>';
+	
+	return $output;
+}
+add_shortcode( 'wpmf_call_buttons', 'wpmf_sc_call_buttons' );
+
+/**
+ * Call History Shortcode
+ * 
+ * Displays user's call history
+ * Usage: [wpmf_call_history limit="10" type="all"]
+ */
+function wpmf_sc_call_history( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '<p>Please log in to view your call history.</p>';
+	}
+	
+	$atts = shortcode_atts( array(
+		'limit' => 20,
+		'type' => 'all', // all, audio, video
+		'show_pagination' => 'true',
+	), $atts );
+	
+	$user_id = get_current_user_id();
+	$limit = max( 1, min( 100, (int) $atts['limit'] ) ); // Limit between 1-100
+	$offset = 0;
+	
+	// Handle pagination
+	if ( $atts['show_pagination'] === 'true' && isset( $_GET['call_page'] ) ) {
+		$page = max( 1, (int) $_GET['call_page'] );
+		$offset = ( $page - 1 ) * $limit;
+	}
+	
+	// Get call history
+	$calls = wpmf_get_user_call_history( $user_id, $limit, $offset, $atts['type'] );
+	
+	// Enqueue assets
+	wp_enqueue_style( 'wpmf-webrtc-calls' );
+	
+	if ( empty( $calls ) ) {
+		return '<div class="wpmf-call-history"><p>No call history found.</p></div>';
+	}
+	
+	$output = '<div class="wpmf-call-history">';
+	$output .= '<h3>Call History</h3>';
+	
+	foreach ( $calls as $call ) {
+		$call_date = wp_date( 'M j, Y g:i A', strtotime( $call->created_at ) );
+		$duration = '';
+		
+		if ( $call->duration_seconds > 0 ) {
+			$duration = gmdate( 'H:i:s', $call->duration_seconds );
+			$duration = ltrim( $duration, '0:' ); // Remove leading zeros
+		}
+		
+		$status_text = ucfirst( str_replace( '_', ' ', $call->status ) );
+		$icon_class = 'fas fa-phone';
+		$item_class = $call->direction;
+		
+		// Determine icon and status
+		if ( $call->call_type === 'video' ) {
+			$icon_class = 'fas fa-video';
+		}
+		
+		if ( $call->status === 'missed' || $call->status === 'declined' ) {
+			$item_class .= ' missed';
+		}
+		
+		$output .= '<div class="wpmf-call-item">';
+		$output .= '<div class="wpmf-call-details">';
+		$output .= '<div class="wpmf-call-icon ' . esc_attr( $item_class ) . '">';
+		$output .= '<i class="' . esc_attr( $icon_class ) . '"></i>';
+		$output .= '</div>';
+		$output .= '<div class="wpmf-call-info">';
+		$output .= '<h4>' . esc_html( $call->other_user['display_name'] ) . '</h4>';
+		$output .= '<p>' . esc_html( ucfirst( $call->call_type ) . ' call • ' . ucfirst( $call->direction ) ) . '</p>';
+		$output .= '</div>';
+		$output .= '</div>';
+		$output .= '<div class="wpmf-call-meta">';
+		$output .= '<div>' . esc_html( $call_date ) . '</div>';
+		if ( $duration ) {
+			$output .= '<div>Duration: ' . esc_html( $duration ) . '</div>';
+		}
+		$output .= '<div class="call-status">' . esc_html( $status_text ) . '</div>';
+		$output .= '</div>';
+		$output .= '</div>';
+	}
+	
+	// Pagination
+	if ( $atts['show_pagination'] === 'true' && count( $calls ) === $limit ) {
+		$current_page = isset( $_GET['call_page'] ) ? max( 1, (int) $_GET['call_page'] ) : 1;
+		$next_page = $current_page + 1;
+		$prev_page = max( 1, $current_page - 1 );
+		
+		$output .= '<div class="wpmf-pagination">';
+		
+		if ( $current_page > 1 ) {
+			$prev_url = add_query_arg( 'call_page', $prev_page );
+			$output .= '<a href="' . esc_url( $prev_url ) . '" class="btn btn-secondary">Previous</a>';
+		}
+		
+		if ( count( $calls ) === $limit ) {
+			$next_url = add_query_arg( 'call_page', $next_page );
+			$output .= '<a href="' . esc_url( $next_url ) . '" class="btn btn-secondary">Next</a>';
+		}
+		
+		$output .= '</div>';
+	}
+	
+	$output .= '</div>';
+	
+	return $output;
+}
+add_shortcode( 'wpmf_call_history', 'wpmf_sc_call_history' );
+
+/**
+ * Active Calls Widget Shortcode
+ * 
+ * Shows any active calls for the current user
+ * Usage: [wpmf_active_calls]
+ */
+function wpmf_sc_active_calls( $atts ) {
+	if ( ! is_user_logged_in() ) {
+		return '';
+	}
+	
+	// This will be handled by JavaScript to show real-time active calls
+	wp_enqueue_script( 'wpmf-webrtc-calls' );
+	wp_enqueue_style( 'wpmf-webrtc-calls' );
+	
+	return '<div id="wpmf-active-calls-widget" class="wpmf-active-calls-widget"></div>';
+}
+add_shortcode( 'wpmf_active_calls', 'wpmf_sc_active_calls' );

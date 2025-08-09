@@ -1,8 +1,8 @@
 # WP Match Free - Project Status & Todo List
 
-**Last Updated:** January 15, 2025  
+**Last Updated:** August 9, 2025  
 **Current Version:** 0.1.0  
-**Overall Completion:** ~45-50% ✨
+**Overall Completion:** ~65-68% ✨
 
 ## 📊 Project Overview
 
@@ -90,6 +90,44 @@ This document tracks the development progress of WP Match Free against the compr
 - [x] **Toast Notifications** - Modern toast system replacing traditional alerts
 - [x] **Micro-interactions** - Hover effects, transitions, and smooth animations
 
+### Winks & Gifts System ✨ **NEW**
+- [x] **Enhanced Interactions Database** - New interactions table supporting multiple interaction types
+- [x] **REST API for Interactions** - Complete API endpoints for sending/receiving winks, gifts, likes
+- [x] **Interactive Frontend System** - JavaScript-powered interaction buttons with real-time feedback
+- [x] **Gift Selection Modal** - Beautiful gift picker with emoji icons and pricing
+- [x] **Interaction History** - Complete tracking of sent/received interactions with timestamps
+- [x] **Match Detection** - Automatic mutual like detection and match notifications
+- [x] **Daily Limits & Spam Prevention** - Rate limiting and duplicate interaction prevention
+- [x] **Statistics Dashboard** - User interaction stats with sent/received/match counts
+- [x] **Multiple Interaction Types** - Support for likes, super likes, winks, and virtual gifts
+- [x] **Shortcode Integration** - Easy-to-use shortcodes for interaction buttons and displays
+
+### Profile View Tracking System ✨ **NEW**
+- [x] **Profile Views Database** - Complete database schema with daily aggregation and statistics tracking
+- [x] **REST API for View Tracking** - Full REST API endpoints for logging views, retrieving viewers, and statistics
+- [x] **Automatic View Logging** - IntersectionObserver-based automatic profile view detection and logging
+- [x] **Privacy Controls** - Respects user blocks, profile visibility, and privacy settings
+- [x] **"Who Viewed Me" Interface** - Complete UI for viewing profile visitors with filtering and pagination
+- [x] **"My Views" History** - Interface for viewing profiles the user has visited with detailed history
+- [x] **View Statistics Dashboard** - Comprehensive statistics with daily breakdowns and source tracking
+- [x] **Anti-Spam Measures** - Duplicate prevention and rate limiting for view logging
+- [x] **Search Integration** - Automatic view tracking in search results with source attribution
+- [x] **Shortcode System** - Three shortcodes for stats, viewers, and view history displays
+
+### WebRTC Audio/Video Calling System ✨ **LATEST**
+- [x] **Calls Database Schema** - Comprehensive calls table with status, signaling data, and session management
+- [x] **Call Management Database Functions** - Complete CRUD operations for calls with 13 specialized functions
+- [x] **WebRTC Signaling Server** - 7 REST API endpoints for call creation, status updates, and peer signaling
+- [x] **JavaScript WebRTC Client** - Full-featured client handling peer connections, media streams, and signaling
+- [x] **Call Initiation & Acceptance UI** - Complete interface for incoming/outgoing calls with notifications
+- [x] **In-Call Interface** - Full-screen call interface with audio/video controls and connection management
+- [x] **Real-Time Call Monitoring** - Automatic polling for incoming calls and call state updates
+- [x] **Media Controls** - Toggle audio/video with visual feedback and local stream management
+- [x] **Call History System** - Complete call logging with duration tracking and status management
+- [x] **Search Integration** - Audio/video call buttons integrated directly into search result cards
+- [x] **Shortcode System** - Three shortcodes for call buttons, call history, and active calls widget
+- [x] **Error Handling & Cleanup** - Comprehensive error handling, resource cleanup, and connection failure recovery
+
 ### Privacy & Compliance
 - [x] **GDPR Integration** - WordPress privacy tools compatibility
 - [x] **Data Export/Erasure** - User data export and deletion capabilities
@@ -113,14 +151,14 @@ This document tracks the development progress of WP Match Free against the compr
 #### Media & Galleries
 - [x] **Photo upload system** - Multi-photo upload with drag-and-drop ✅ **COMPLETED**
 - [x] **Photo galleries** - Profile photo management and display ✅ **COMPLETED**
-- [ ] **Image processing** - Advanced thumbnails, compression, optimization
+- [x] **Image processing** - Advanced thumbnails, compression, optimization ✅ **COMPLETED**
 - [ ] **Photo moderation UI** - Admin interface for photo approval/rejection
 - [ ] **Private galleries** - Access-controlled photo sharing
 
 #### Social Features
-- [ ] **Winks/gifts system** - Quick interaction features
-- [ ] **"Viewed me / I viewed" tracking** - Profile view history
-- [ ] **Status updates** - User activity and mood updates
+- [x] **Winks/gifts system** - Quick interaction features ✅ **COMPLETED**
+- [x] **"Viewed me / I viewed" tracking** - Profile view history ✅ **COMPLETED**
+- [x] **Status updates** - User activity and mood updates ✅ **COMPLETED (August 9, 2025)**
 - [ ] **Friend lists** - Social connections beyond matching
 
 #### Location Features
@@ -314,11 +352,13 @@ This document tracks the development progress of WP Match Free against the compr
 
 ### Quality Gates
 - [ ] All features have unit tests
+- [x] Status pagination endpoints covered by integration tests (headers, Link, clamping)
 - [ ] PHPCS compliance maintained
 - [ ] Security audit completed
 - [ ] Performance benchmarking
 - [ ] Accessibility validation
-- [ ] Translation completeness
+- [ ] Translation completeness (Link header translator comments added)
+- [ ] Release prep tasks (version bump, changelog, POT regenerate) pending
 
 ### Key Milestones
 - [x] **Project Initialization** - Repository setup and basic structure
@@ -331,7 +371,38 @@ This document tracks the development progress of WP Match Free against the compr
 - [ ] **First Major Update** - Differentiator features complete
 
 ### Recent Achievements ✨
-**Latest Session (January 15, 2025):**
+**Latest Session (August 9, 2025):**
+- ✅ **Complete WebRTC Audio/Video Calling System** - Full peer-to-peer calling with signaling server, call management, and modern UI
+- ✅ **Call Database Architecture** - Comprehensive calls table with status tracking, duration logging, and signaling data storage
+- ✅ **WebRTC JavaScript Client** - Full-featured client with peer connection management, media stream handling, and real-time signaling
+- ✅ **Call Interface & Controls** - Complete call UI with incoming call notifications, in-call controls, and media toggle functionality
+- ✅ **Search Integration** - Audio/video call buttons integrated directly into search result cards for seamless user experience
+- ✅ **Call History System** - Complete call logging with duration tracking, pagination, and comprehensive call statistics
+- ✅ **REST API Endpoints** - 7 specialized endpoints for call creation, status updates, signaling, and call management
+- ✅ **Error Handling & Cleanup** - Robust connection failure handling, resource cleanup, and automatic call timeout management
+
+**Previous Session (August 9, 2025):**
+- ✅ **Status Updates Feature** - Database schema, CRUD layer, REST API endpoints (list, mine, detail, create, delete, flag), visibility & moderation logic, shortcodes `[wpmf_status_feed]` & `[wpmf_status_composer]`, JavaScript feed/composer with posting, deletion, flagging, pagination basics, rate limiting, word filter integration, soft delete & flag threshold system.
+- ✅ **Status API & Pagination Enhancements** - Added dual pagination headers (`X-WPMF-Total`, `X-WPMF-TotalPages` plus standard `X-WP-Total`, `X-WP-TotalPages`), implemented RFC5988 `Link` header with `rel="prev"` / `rel="next"`, enforced `per_page` clamping (1–50), added integration tests for headers & clamping, added translator comments for Link header strings, fixed cache invalidation on status flagging (now invalidates by owner user id), updated API spec & README (Recent Changes section) accordingly, initiated release prep (version bump & changelog pending).
+- ✅ **Complete Profile View Tracking System** - Full "viewed me / I viewed" functionality with comprehensive database, API, and UI
+- ✅ **Automatic View Logging** - IntersectionObserver-based automatic profile view detection in search results
+- ✅ **Privacy-First Architecture** - Respects user blocks, profile visibility, and implements comprehensive privacy controls
+- ✅ **Complete REST API** - Five endpoints for view logging, retrieving viewers/viewed, statistics, and mutual views
+- ✅ **Modern UI Components** - Three shortcodes with filtering, pagination, and responsive design
+- ✅ **Search Integration** - Automatic view tracking integrated into existing search results system
+
+**Previous Session (August 9, 2025):**
+- ✅ **Complete Winks & Gifts System** - Full interaction system with likes, super likes, winks, and virtual gifts
+- ✅ **Interactive Frontend** - JavaScript-powered buttons with real-time feedback and modal gift selection
+- ✅ **Enhanced Database Architecture** - New interactions table with comprehensive tracking and statistics
+- ✅ **REST API Integration** - Complete API endpoints for sending, receiving, and managing interactions
+- ✅ **Match Detection System** - Automatic mutual like detection with notification triggers
+
+**Previous Session (August 8, 2025):**
+- ✅ **Advanced Image Processing** - Implemented thumbnail generation, WebP conversion, watermarking, EXIF stripping, and membership-based quality controls
+- ✅ **Integration with Upload Pipeline** - Updated photo upload system to use new processing backend
+
+**Previous Session (January 15, 2025):**
 - ✅ **Tailwind CSS Integration** - Complete modern styling framework implementation
 - ✅ **Messaging UI Overhaul** - Modern conversation interface with cards and animations
 - ✅ **Profile Management Redesign** - Updated profile edit form with grid layouts and gradients
